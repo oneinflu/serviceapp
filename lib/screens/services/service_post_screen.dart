@@ -85,7 +85,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
       }
 
       var response = await Dio().get(
-        'https://servicebackend-kd4t.onrender.com/api/companies/my-companies',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/companies/my-companies',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
@@ -118,7 +118,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
 
       var dio = Dio();
       var response = await dio.get(
-        'https://servicebackend-kd4t.onrender.com/api/categories/type/Service',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/categories/type/Service',
       );
 
       if (response.statusCode == 200) {
@@ -294,7 +294,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
     try {
       var dio = Dio();
       var response = await dio.post(
-        'https://servicebackend-kd4t.onrender.com/api/services',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/services',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',

@@ -61,7 +61,7 @@ class _EditJobPostScreenState extends State<EditJobPostScreen> {
 
       var dio = Dio();
       var response = await dio.get(
-        'https://servicebackend-kd4t.onrender.com/api/jobs/${_jobId}',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/jobs/${_jobId}',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -113,7 +113,7 @@ class _EditJobPostScreenState extends State<EditJobPostScreen> {
     try {
       var dio = Dio();
       var response = await dio.get(
-        'https://servicebackend-kd4t.onrender.com/api/categories/type/Job',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/categories/type/Job',
       );
 
       if (response.statusCode == 200) {
@@ -242,7 +242,7 @@ class _EditJobPostScreenState extends State<EditJobPostScreen> {
     try {
       var dio = Dio();
       var response = await dio.put(
-        'https://servicebackend-kd4t.onrender.com/api/jobs/${_jobId}',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/jobs/${_jobId}',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',

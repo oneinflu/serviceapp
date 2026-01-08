@@ -63,7 +63,7 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
       final token = authProvider.token;
 
       var response = await Dio().get(
-        'https://servicebackend-kd4t.onrender.com/api/jobs',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/jobs',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 

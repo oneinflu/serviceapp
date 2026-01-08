@@ -131,7 +131,7 @@ class _ServiceSubscriptionSheetState extends State<ServiceSubscriptionSheet> {
 
       var dio = Dio();
       var verifyResponse = await dio.request(
-        'https://servicebackend-kd4t.onrender.com/api/payments/verify-payment',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/payments/verify-payment',
         options: Options(method: 'POST', headers: headers),
         data: data,
       );
@@ -207,7 +207,7 @@ class _ServiceSubscriptionSheetState extends State<ServiceSubscriptionSheet> {
 
       var dio = Dio();
       var response = await dio.request(
-        'https://servicebackend-kd4t.onrender.com/api/payments/create-order',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/payments/create-order',
         options: Options(method: 'POST', headers: headers),
         data: data,
       );
@@ -246,7 +246,7 @@ class _ServiceSubscriptionSheetState extends State<ServiceSubscriptionSheet> {
                       'description': orderData['description'],
                       'order_id': orderData['order']['id'],
                       'callback_url':
-                          'https://servicebackend-kd4t.onrender.com/api/payments/verify-payment',
+                          'https://servicebackendnew-e2d8v.ondigitalocean.app/api/payments/verify-payment',
                       'prefill': json.encode(orderData['prefill']),
                     },
                   )

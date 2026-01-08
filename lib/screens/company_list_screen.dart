@@ -43,7 +43,7 @@ class _CompanyListScreenState extends State<CompanyListScreen> {
       }
 
       var response = await Dio().get(
-        'https://servicebackend-kd4t.onrender.com/api/companies/my-companies',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/companies/my-companies',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
@@ -70,7 +70,7 @@ class _CompanyListScreenState extends State<CompanyListScreen> {
       final token = authProvider.token;
 
       final response = await Dio().delete(
-        'https://servicebackend-kd4t.onrender.com/api/companies/$companyId',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/companies/$companyId',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 

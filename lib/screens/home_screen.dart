@@ -70,7 +70,7 @@ class HomeScreen extends StatelessWidget {
 
     try {
       final response = await dio.request(
-        'https://servicebackend-kd4t.onrender.com/api/subscriptions/my-subscriptions',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/subscriptions/my-subscriptions',
         options: Options(
           method: 'GET',
           headers: {'Authorization': 'Bearer $token'},

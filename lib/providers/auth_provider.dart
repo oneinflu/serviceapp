@@ -28,7 +28,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> login(String email, String password) async {
     try {
       final response = await _dio.post(
-        'https://servicebackend-kd4t.onrender.com/api/auth/login',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/auth/login',
         data: {'email': email, 'password': password},
       );
 
@@ -72,7 +72,7 @@ class AuthProvider extends ChangeNotifier {
     if (kIsWeb) {
       try {
         final response = await _dio.get(
-          'https://servicebackend-kd4t.onrender.com/api/auth/profile',
+          'https://servicebackendnew-e2d8v.ondigitalocean.app/api/auth/profile',
           options: Options(
             headers: {'Authorization': 'Bearer $savedToken'},
             validateStatus: (status) => status! < 500,
@@ -115,7 +115,7 @@ class AuthProvider extends ChangeNotifier {
       print('Using token: $_token');
 
       final response = await _dio.get(
-        'https://servicebackend-kd4t.onrender.com/api/auth/profile',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/auth/profile',
         options: Options(
           headers: {'Authorization': 'Bearer $_token'},
           validateStatus: (status) => status! < 500,

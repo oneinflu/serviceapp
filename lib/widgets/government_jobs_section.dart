@@ -31,7 +31,7 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
     try {
       var dio = Dio();
       var response = await dio.get(
-        'https://servicebackend-kd4t.onrender.com/api/government-jobs',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/government-jobs',
       );
 
       if (response.statusCode == 200) {

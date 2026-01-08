@@ -49,7 +49,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
       final token = authProvider.token;
 
       var response = await Dio().get(
-        'https://servicebackend-kd4t.onrender.com/api/jobs/my-jobs',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/jobs/my-jobs',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
@@ -105,7 +105,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
       final token = authProvider.token;
 
       final response = await Dio().delete(
-        'https://servicebackend-kd4t.onrender.com/api/jobs/$jobId',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/jobs/$jobId',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 

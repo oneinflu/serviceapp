@@ -148,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           try {
                                             var dio = Dio();
                                             final response = await dio.get(
-                                              'https://servicebackend-kd4t.onrender.com/api/companies/my-companies',
+                                              'https://servicebackendnew-e2d8v.ondigitalocean.app/api/companies/my-companies',
                                               options: Options(
                                                 headers: {
                                                   'Authorization':

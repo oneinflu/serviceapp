@@ -51,7 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       };
 
       final response = await dio.post(
-        'https://servicebackend-kd4t.onrender.com/api/auth/register',
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/auth/register',
         data: data,
       );
 
