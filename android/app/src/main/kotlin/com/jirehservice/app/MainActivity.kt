@@ -1,4 +1,4 @@
-package com.serviceinfotek.app // Change from com.example.app
+package com.jirehservice.app // Change from com.jirehservice.app
 
 import io.flutter.embedding.android.FlutterActivity
 

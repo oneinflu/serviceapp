@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../l10n/app_localizations.dart';
 
 class LocationDetailsForm extends StatefulWidget {
   final TextEditingController districtController;
@@ -10,8 +11,10 @@ class LocationDetailsForm extends StatefulWidget {
   final TextEditingController cityController;
   final TextEditingController pincodeController;
   final TextEditingController countryController;
+  final TextEditingController addressController;
   final bool showTitle;
   final bool isDesktop; // Add this line
+  final bool hideAddress;
 
   const LocationDetailsForm({
     Key? key,
@@ -20,8 +23,10 @@ class LocationDetailsForm extends StatefulWidget {
     required this.cityController,
     required this.pincodeController,
     required this.countryController,
+    required this.addressController,
     this.showTitle = true,
     this.isDesktop = false, // Add this line
+    this.hideAddress = false,
   }) : super(key: key);
 
   @override
@@ -58,11 +63,28 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
         ),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
           _indiaData = data;
           _states = _extractStates(data);
+          
+          if (widget.stateController.text.isNotEmpty) {
+            _selectedState = widget.stateController.text;
+            _updateCities(_selectedState!, clearSelection: false);
+            
+            if (widget.cityController.text.isNotEmpty) {
+              _selectedCity = widget.cityController.text;
+              _updateTowns(_selectedCity!, clearSelection: false);
+              
+              if (widget.districtController.text.isNotEmpty) {
+                _selectedTown = widget.districtController.text;
+              }
+            }
+          }
+          
           _isLoading = false;
         });
       } else {
@@ -70,7 +92,7 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load location data')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'failed_load_location_data'))),
         );
       }
     } catch (e) {
@@ -79,7 +101,7 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context, 'error_prefix')} ${e.toString()}')));
     }
   }
 
@@ -93,7 +115,7 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
     return statesList..sort();
   }
 
-  void _updateCities(String state) {
+  void _updateCities(String state, {bool clearSelection = true}) {
     for (var stateData in _indiaData) {
       if (stateData['state'] == state && stateData['cities'] != null) {
         setState(() {
@@ -102,26 +124,30 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
               (stateData['cities'] as List)
                   .map((city) => city as Map<String, dynamic>)
                   .toList();
-          _selectedCity = null;
-          _towns = [];
-          _selectedTown = null;
-          widget.stateController.text = state;
-          widget.cityController.text = "";
-          widget.districtController.text = "";
+          if (clearSelection) {
+            _selectedCity = null;
+            _towns = [];
+            _selectedTown = null;
+            widget.stateController.text = state;
+            widget.cityController.text = "";
+            widget.districtController.text = "";
+          }
         });
         break;
       }
     }
   }
 
-  void _updateTowns(String city) {
+  void _updateTowns(String city, {bool clearSelection = true}) {
     for (var cityData in _cities) {
       if (cityData['city'] == city && cityData['towns'] != null) {
         setState(() {
           _towns = List<String>.from(cityData['towns']);
-          _selectedTown = null;
-          widget.cityController.text = city;
-          widget.districtController.text = "";
+          if (clearSelection) {
+            _selectedTown = null;
+            widget.cityController.text = city;
+            widget.districtController.text = "";
+          }
         });
         break;
       }
@@ -144,7 +170,7 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (widget.showTitle) ...[
-            Text('Location Details', style: theme.titleStyle),
+            Text(AppLocalizations.of(context, 'location_details'), style: theme.titleStyle),
             const SizedBox(height: 16),
           ],
           // Country field (pre-filled with INDIA)
@@ -152,7 +178,7 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
             controller: widget.countryController,
             enabled: false,
             decoration: theme.inputDecoration(
-              labelText: 'Country',
+              labelText: AppLocalizations.of(context, 'country'),
               prefixIcon: Icons.public,
               context: context,
             ),
@@ -166,10 +192,10 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
                   textFieldConfiguration: TextFieldConfiguration(
                     controller: TextEditingController(text: _selectedState),
                     decoration: theme.searchDropdownDecoration(
-                      labelText: 'State',
+                      labelText: AppLocalizations.of(context, 'state'),
                       prefixIcon: Icons.map,
                       context: context,
-                      hintText: 'Select State',
+                      hintText: AppLocalizations.of(context, 'select_state'),
                     ),
                   ),
                   displayAllSuggestionWhenTap: true,
@@ -193,7 +219,7 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
                   },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please select a state';
+                      return AppLocalizations.of(context, 'please_select_state');
                     }
                     return null;
                   },
@@ -206,10 +232,10 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
               controller: TextEditingController(text: _selectedCity),
               enabled: _selectedState != null,
               decoration: theme.searchDropdownDecoration(
-                labelText: 'City',
+                labelText: AppLocalizations.of(context, 'city'),
                 prefixIcon: Icons.location_city,
                 context: context,
-                hintText: 'Select City',
+                hintText: AppLocalizations.of(context, 'select_city'),
               ),
             ),
             displayAllSuggestionWhenTap: true,
@@ -236,7 +262,7 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
             },
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please select a city';
+                return AppLocalizations.of(context, 'please_select_city');
               }
               return null;
             },
@@ -250,10 +276,10 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
               enabled: _selectedCity != null,
 
               decoration: theme.searchDropdownDecoration(
-                labelText: 'Town/District',
+                labelText: AppLocalizations.of(context, 'town_district'),
                 prefixIcon: Icons.location_on,
                 context: context,
-                hintText: 'Select Town/District',
+                hintText: AppLocalizations.of(context, 'select_town_district'),
               ),
             ),
             displayAllSuggestionWhenTap: true,
@@ -276,26 +302,45 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
             },
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please select a town/district';
+                return AppLocalizations.of(context, 'please_select_town_district');
               }
               return null;
             },
           ),
           const SizedBox(height: 16),
+          // Address field
+          if (!widget.hideAddress) ...[
+            TextFormField(
+              controller: widget.addressController,
+              maxLines: 2,
+              decoration: theme.inputDecoration(
+                labelText: AppLocalizations.of(context, 'detailed_address'),
+                prefixIcon: Icons.home,
+                context: context,
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return AppLocalizations.of(context, 'please_enter_address');
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Pincode field (at the bottom)
           TextFormField(
             controller: widget.pincodeController,
             keyboardType: TextInputType.number,
             decoration: theme.inputDecoration(
-              labelText: 'Pincode',
+              labelText: AppLocalizations.of(context, 'pincode'),
               prefixIcon: Icons.pin_drop,
               context: context,
             ),
             validator:
                 (value) =>
                     value == null || value.isEmpty
-                        ? 'Please enter Pincode'
+                        ? AppLocalizations.of(context, 'please_enter_pincode')
                         : null,
           ),
         ],

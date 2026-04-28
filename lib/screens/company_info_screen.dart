@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/location_details_form.dart';
+import '../l10n/app_localizations.dart';
 
 class CompanyInfoScreen extends StatefulWidget {
   const CompanyInfoScreen({Key? key}) : super(key: key);
@@ -29,6 +30,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
   final _cityController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _countryController = TextEditingController();
+  final _addressController = TextEditingController();
 
   bool _isLoading = false;
   bool _isLoadingCompanyData = true;
@@ -71,6 +73,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
         _cityController.text = company['location']['city'] ?? '';
         _districtController.text = company['location']['district'] ?? '';
         _pincodeController.text = company['location']['pincode'] ?? '';
+        _addressController.text = company['location']['address'] ?? '';
       }
     });
   }
@@ -121,6 +124,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                 _districtController.text =
                     company['location']['district'] ?? '';
                 _pincodeController.text = company['location']['pincode'] ?? '';
+                _addressController.text = company['location']['address'] ?? '';
               }
             });
           }
@@ -163,7 +167,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
               onPressed: () => Navigator.of(context).pop(),
             ),
             title: Text(
-              _hasCompany ? 'Edit Company Information' : 'Company Information',
+              _hasCompany ? AppLocalizations.of(context, 'edit_company_info') : AppLocalizations.of(context, 'company_info'),
               style: theme
                   .appBarTitleStyle(context)
                   .copyWith(fontSize: isDesktop ? 24 : 20),
@@ -196,7 +200,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                     }
                   },
                   child: Text(
-                    'Skip',
+                    AppLocalizations.of(context, 'skip'),
                     style: theme
                         .linkStyle(context)
                         .copyWith(fontSize: isDesktop ? 18 : 16),
@@ -223,8 +227,8 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                         children: [
                           Text(
                             _hasCompany
-                                ? 'Edit your company information'
-                                : 'Please provide your company information',
+                                ? AppLocalizations.of(context, 'edit_company_desc')
+                                : AppLocalizations.of(context, 'please_provide_company_info'),
                             style: theme.titleStyle.copyWith(
                               fontSize: isDesktop ? 28 : 20,
                             ),
@@ -241,7 +245,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                     controller: _nameController,
                                     decoration: theme
                                         .inputDecoration(
-                                          labelText: 'Company Name',
+                                          labelText: AppLocalizations.of(context, 'company_name'),
                                           prefixIcon: Icons.business,
                                           context: context,
                                         )
@@ -265,7 +269,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                     controller: _websiteController,
                                     decoration: theme
                                         .inputDecoration(
-                                          labelText: 'Website (Optional)',
+                                          labelText: AppLocalizations.of(context, 'website_optional'),
                                           prefixIcon: Icons.language,
                                           context: context,
                                         )
@@ -284,7 +288,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                     controller: _aboutController,
                                     decoration: theme
                                         .inputDecoration(
-                                          labelText: 'About Company (Optional)',
+                                          labelText: AppLocalizations.of(context, 'about_company_optional'),
                                           prefixIcon: Icons.description,
                                           context: context,
                                         )
@@ -305,6 +309,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                     cityController: _cityController,
                                     pincodeController: _pincodeController,
                                     countryController: _countryController,
+                                    addressController: _addressController,
                                     isDesktop: isDesktop,
                                   ),
                                   SizedBox(height: isDesktop ? 40 : 24),
@@ -321,8 +326,8 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                               )
                                               : Text(
                                                 _hasCompany
-                                                    ? 'Update'
-                                                    : 'Submit',
+                                                    ? AppLocalizations.of(context, 'update')
+                                                    : AppLocalizations.of(context, 'submit'),
                                                 style: TextStyle(
                                                   fontSize: isDesktop ? 18 : 16,
                                                 ),
@@ -367,6 +372,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
           'city': _cityController.text,
           'district': _districtController.text,
           'pincode': _pincodeController.text,
+          'address': _addressController.text,
         },
       };
 
@@ -377,13 +383,16 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
       );
 
       if (response.statusCode == 201 && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Company information saved successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pushReplacementNamed(context, '/home');
+        await authProvider.refreshUserData();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Company information saved successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       }
     } catch (e) {
       if (mounted) {

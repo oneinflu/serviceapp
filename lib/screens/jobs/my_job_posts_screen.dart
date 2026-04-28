@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_drawer.dart';
+import '../../l10n/app_localizations.dart';
 
 class MyJobPostsScreen extends StatefulWidget {
   const MyJobPostsScreen({super.key});
@@ -110,15 +112,57 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
       );
 
       if (response.statusCode == 200) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Job post deleted successfully')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'job_deleted_success'))),
         );
         fetchMyJobs(); // Refresh the list
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting job post: ${e.toString()}')),
+        SnackBar(content: Text('${AppLocalizations.of(context, 'error_deleting_job')}: ${e.toString()}')),
       );
+    }
+  }
+
+  void _cloneJob(String jobId) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      final response = await Dio().post(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/jobs/$jobId/clone',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context, 'job_cloned_success'))),
+        );
+        fetchMyJobs(); // Refresh the list
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${AppLocalizations.of(context, 'error_cloning_job')}: ${e.toString()}')),
+      );
+    }
+  }
+
+  Color _getStatusColor(String? status) {
+    if (status == null) return Colors.green;
+    switch (status.toLowerCase()) {
+      case 'active':
+        return Colors.green;
+      case 'expired':
+        return Colors.red;
+      case 'closed':
+      case 'inactive':
+        return Colors.grey;
+      default:
+        return Theme.of(context).primaryColor;
     }
   }
 
@@ -129,7 +173,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
     return theme.buildPageBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: theme.buildAppBar(context, 'My Job Posts'),
+        appBar: theme.buildAppBar(context, AppLocalizations.of(context, 'my_job_posts')),
         drawer: const AppDrawer(),
         body: Column(
           children: [
@@ -141,7 +185,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                     child: TextField(
                       controller: _searchController,
                       decoration: theme.searchDropdownDecoration(
-                        labelText: 'Search jobs',
+                        labelText: AppLocalizations.of(context, 'search_jobs_hint'),
                         prefixIcon: Icons.search,
                         context: context,
                       ),
@@ -162,14 +206,14 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          'Filter Jobs',
+                                          AppLocalizations.of(context, 'filter_jobs'),
                                           style: theme.headingStyle(context),
                                         ),
                                         const SizedBox(height: 16),
                                         DropdownButtonFormField<String>(
                                           value: selectedCategory,
                                           decoration: theme.dropdownDecoration(
-                                            labelText: 'Category',
+                                            labelText: AppLocalizations.of(context, 'category'),
                                             prefixIcon: Icons.category,
                                             context: context,
                                           ),
@@ -208,7 +252,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                         DropdownButtonFormField<String>(
                                           value: selectedState,
                                           decoration: theme.dropdownDecoration(
-                                            labelText: 'State',
+                                            labelText: AppLocalizations.of(context, 'state'),
                                             prefixIcon: Icons.location_on,
                                             context: context,
                                           ),
@@ -238,7 +282,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                         DropdownButtonFormField<String>(
                                           value: selectedCity,
                                           decoration: theme.dropdownDecoration(
-                                            labelText: 'City',
+                                            labelText: AppLocalizations.of(context, 'city'),
                                             prefixIcon: Icons.location_city,
                                             context: context,
                                           ),
@@ -282,8 +326,8 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                               style: theme.secondaryButtonStyle(
                                                 context,
                                               ),
-                                              child: const Text(
-                                                'Clear Filters',
+                                              child: Text(
+                                                AppLocalizations.of(context, 'clear_filters'),
                                               ),
                                             ),
                                             ElevatedButton(
@@ -292,7 +336,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                               style: theme.primaryButtonStyle(
                                                 context,
                                               ),
-                                              child: const Text('Apply'),
+                                              child: Text(AppLocalizations.of(context, 'apply')),
                                             ),
                                           ],
                                         ),
@@ -316,7 +360,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                       )
                       : error != null
                       ? Center(
-                        child: Text('Error: $error', style: theme.titleStyle),
+                        child: Text('${AppLocalizations.of(context, 'error_prefix')}$error', style: theme.titleStyle),
                       )
                       : filteredJobs.isEmpty
                       ? Center(
@@ -329,16 +373,16 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                               color: Colors.grey,
                             ),
                             const SizedBox(height: 16),
-                            Text('No job posts found', style: theme.titleStyle),
+                            Text(AppLocalizations.of(context, 'no_job_posts_found'), style: theme.titleStyle),
                             const SizedBox(height: 8),
                             ElevatedButton.icon(
                               onPressed:
                                   () =>
                                       Navigator.pushNamed(context, '/job-post'),
                               icon: const Icon(Icons.add),
-                              label: const Text(
-                                'Create Job Post',
-                                style: TextStyle(color: Colors.white),
+                              label: Text(
+                                AppLocalizations.of(context, 'create_job_post'),
+                                style: const TextStyle(color: Colors.white),
                               ),
                               style: theme.primaryButtonStyle(context),
                             ),
@@ -369,60 +413,58 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              if (job['isCompanyPost'] == true)
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: Theme.of(context)
-                                                        .primaryColor
-                                                        .withOpacity(0.1),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
+                                              Row(
+                                                children: [
+                                                  if (job['isCompanyPost'] == true)
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(right: 8.0),
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                        decoration: BoxDecoration(
+                                                          color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                                          borderRadius: BorderRadius.circular(4),
                                                         ),
-                                                  ),
-                                                  child: Text(
-                                                    'Company Post',
-                                                    style: TextStyle(
-                                                      color:
-                                                          Theme.of(
-                                                            context,
-                                                          ).primaryColor,
-                                                      fontSize: 12,
+                                                        child: Text(
+                                                          AppLocalizations.of(context, 'company_post'),
+                                                          style: TextStyle(
+                                                            color: Theme.of(context).primaryColor,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: _getStatusColor(job['status']).withOpacity(0.1),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      AppLocalizations.of(context, (job['status']?.toString().toLowerCase()) ?? 'active').toUpperCase(),
+                                                      style: TextStyle(
+                                                        color: _getStatusColor(job['status']),
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
                                                     ),
                                                   ),
-                                                ),
+                                                ],
+                                              ),
                                               const SizedBox(height: 8),
                                               // Display categories as chips
                                               Wrap(
                                                 spacing: 8,
                                                 runSpacing: 8,
                                                 children: [
-                                                  ...((job['categories']
-                                                              as List?)
+                                                  ...((job['categories'] as List?)
                                                           ?.map(
                                                             (category) => Chip(
                                                               label: Text(
-                                                                category['name'] ??
-                                                                    '',
+                                                                category['name'] ?? '',
                                                               ),
-                                                              backgroundColor:
-                                                                  Theme.of(
-                                                                        context,
-                                                                      )
-                                                                      .primaryColor
-                                                                      .withOpacity(
-                                                                        0.1,
-                                                                      ),
+                                                              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                                                               labelStyle: TextStyle(
-                                                                color:
-                                                                    Theme.of(
-                                                                      context,
-                                                                    ).primaryColor,
+                                                                color: Theme.of(context).primaryColor,
                                                               ),
                                                             ),
                                                           )
@@ -441,11 +483,7 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder:
-                                                      (context) =>
-                                                          EditJobPostScreen(
-                                                            job: job,
-                                                          ),
+                                                  builder: (context) => EditJobPostScreen(job: job),
                                                 ),
                                               ).then((result) {
                                                 // Refresh the list if edit was successful
@@ -453,83 +491,68 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                                   fetchMyJobs();
                                                 }
                                               });
+                                            } else if (value == 'clone') {
+                                              _cloneJob(job['_id']);
                                             } else if (value == 'delete') {
                                               // Show confirmation dialog
                                               showDialog(
                                                 context: context,
-                                                builder:
-                                                    (context) => AlertDialog(
-                                                      title: const Text(
-                                                        'Delete Job Post',
-                                                      ),
-                                                      content: const Text(
-                                                        'Are you sure you want to delete this job post?',
-                                                      ),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed:
-                                                              () =>
-                                                                  Navigator.pop(
-                                                                    context,
-                                                                  ),
-                                                          child: const Text(
-                                                            'Cancel',
-                                                          ),
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: () {
-                                                            Navigator.pop(
-                                                              context,
-                                                            );
-                                                            _deleteJob(
-                                                              job['_id'],
-                                                            );
-                                                          },
-                                                          style:
-                                                              TextButton.styleFrom(
-                                                                foregroundColor:
-                                                                    Colors.red,
-                                                              ),
-                                                          child: const Text(
-                                                            'Delete',
-                                                          ),
-                                                        ),
-                                                      ],
+                                                builder: (context) => AlertDialog(
+                                                  title: Text(AppLocalizations.of(context, 'delete_job_post_title')),
+                                                  content: Text(AppLocalizations.of(context, 'delete_job_post_desc')),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context),
+                                                      child: Text(AppLocalizations.of(context, 'cancel')),
                                                     ),
+                                                    TextButton(
+                                                      onPressed: () {
+                                                        Navigator.pop(context);
+                                                        _deleteJob(job['_id']);
+                                                      },
+                                                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                                      child: Text(AppLocalizations.of(context, 'delete')),
+                                                    ),
+                                                  ],
+                                                ),
                                               );
                                             }
                                           },
-                                          itemBuilder:
-                                              (context) => [
-                                                const PopupMenuItem<String>(
-                                                  value: 'edit',
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(Icons.edit),
-                                                      SizedBox(width: 8),
-                                                      Text('Edit'),
-                                                    ],
+                                          itemBuilder: (context) => [
+                                            PopupMenuItem<String>(
+                                              value: 'edit',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.edit),
+                                                  const SizedBox(width: 8),
+                                                  Text(AppLocalizations.of(context, 'edit')),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem<String>(
+                                              value: 'clone',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.copy),
+                                                  const SizedBox(width: 8),
+                                                  Text(AppLocalizations.of(context, 'clone')),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem<String>(
+                                              value: 'delete',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.delete, color: Colors.red),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    AppLocalizations.of(context, 'delete'),
+                                                    style: const TextStyle(color: Colors.red),
                                                   ),
-                                                ),
-                                                const PopupMenuItem<String>(
-                                                  value: 'delete',
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.delete,
-                                                        color: Colors.red,
-                                                      ),
-                                                      SizedBox(width: 8),
-                                                      Text(
-                                                        'Delete',
-                                                        style: TextStyle(
-                                                          color: Colors.red,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -567,42 +590,34 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed: () {
-                                              // View details or statistics
-                                            },
-                                            icon: const Icon(Icons.visibility),
-                                            label: const Text('View Details'),
-                                            style: theme.secondaryButtonStyle(
-                                              context,
-                                            ),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          final categories = job['categories'] as List? ?? [];
+                                          final catNames = categories.map((c) => c['name']).join(', ');
+                                          final loc = job['location'] ?? {};
+                                          final city = loc['city'] ?? '';
+                                          final state = loc['state'] ?? '';
+                                          final locStr = '$city, $state'.replaceAll(RegExp(r'^,\s*'), '');
+                                          
+                                          final text = 'Check out this job opportunity for $catNames in $locStr! Download the app to apply.';
+                                          Share.share(text);
+                                        },
+                                        icon: const Icon(
+                                          Icons.share,
+                                          color: Colors.white,
+                                        ),
+                                        label: Text(
+                                          AppLocalizations.of(context, 'share_job'),
+                                          style: const TextStyle(
+                                            color: Colors.white,
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed: () {
-                                              // Share job post
-                                            },
-                                            icon: const Icon(
-                                              Icons.share,
-                                              color: Colors.white,
-                                            ),
-                                            label: const Text(
-                                              'Share',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            style: theme.primaryButtonStyle(
-                                              context,
-                                            ),
-                                          ),
+                                        style: theme.primaryButtonStyle(
+                                          context,
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ],
                                 ),

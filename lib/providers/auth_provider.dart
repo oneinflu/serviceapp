@@ -137,7 +137,16 @@ class AuthProvider extends ChangeNotifier {
       print('=====================================\n');
 
       if (response.statusCode == 200 && response.data['status'] == 'success') {
-        _userData = response.data['data']['user'];
+        final newUserData = response.data['data']['user'] as Map<String, dynamic>;
+
+        // Preserve local skippedCompanyInfo if it was true and is not in the new data
+        if (_userData != null && 
+            _userData!['skippedCompanyInfo'] == true && 
+            (newUserData['skippedCompanyInfo'] == null || newUserData['skippedCompanyInfo'] == false)) {
+          newUserData['skippedCompanyInfo'] = true;
+        }
+
+        _userData = newUserData;
 
         // Ensure company info fields exist
         if (_userData != null && !_userData!.containsKey('company')) {

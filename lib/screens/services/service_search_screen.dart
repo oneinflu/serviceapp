@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 
 class ServiceSearchScreen extends StatefulWidget {
   const ServiceSearchScreen({super.key});
@@ -26,7 +27,6 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
   String? selectedCity;
   String? selectedPincode;
   String? selectedCountry;
-  String sortOption = 'none';
 
   // Unique location values
   Set<String> districts = {};
@@ -44,6 +44,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
   void extractUniqueLocations() {
     for (var service in services) {
       var location = service['location'];
+      if (location == null) continue;
       if (location['district'] != null) districts.add(location['district']);
       if (location['state'] != null) states.add(location['state']);
       if (location['city'] != null) cities.add(location['city']);
@@ -60,9 +61,11 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
       final searchQuery = _searchController.text.toLowerCase();
       filteredServices =
           filteredServices.where((service) {
-            final categoryName =
-                service['category']['name'].toString().toLowerCase();
-            final tags = service['tags'] as List;
+            String categoryName = '';
+            if (service['categoryPrices'] != null && (service['categoryPrices'] as List).isNotEmpty) {
+              categoryName = (service['categoryPrices'][0]['category']?['name'] ?? '').toString().toLowerCase();
+            }
+            final tags = service['tags'] as List? ?? [];
             final tagsMatch = tags.any(
               (tag) => tag.toString().toLowerCase().contains(searchQuery),
             );
@@ -71,40 +74,44 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
     }
 
     // Apply location filters
-    filteredServices =
-        filteredServices.where((service) {
-          var location = service['location'];
-          return (selectedDistrict == null ||
-                  location['district'] == selectedDistrict) &&
-              (selectedState == null || location['state'] == selectedState) &&
-              (selectedCity == null || location['city'] == selectedCity) &&
-              (selectedPincode == null ||
-                  location['pincode'] == selectedPincode) &&
-              (selectedCountry == null ||
-                  location['country'] == selectedCountry);
-        }).toList();
+    bool hasLocationFilter = selectedDistrict != null || 
+                             selectedState != null || 
+                             selectedCity != null || 
+                             selectedPincode != null || 
+                             selectedCountry != null;
 
-    // Apply sorting
-    if (sortOption != 'none') {
-      filteredServices.sort((a, b) {
-        int priceA = int.parse(a['price'].toString());
-        int priceB = int.parse(b['price'].toString());
-        return sortOption == 'lowToHigh'
-            ? priceA.compareTo(priceB)
-            : priceB.compareTo(priceA);
-      });
+    if (hasLocationFilter) {
+      filteredServices =
+          filteredServices.where((service) {
+            var location = service['location'];
+            if (location == null) return false;
+            return (selectedDistrict == null ||
+                    location['district'] == selectedDistrict) &&
+                (selectedState == null || location['state'] == selectedState) &&
+                (selectedCity == null || location['city'] == selectedCity) &&
+                (selectedPincode == null ||
+                    location['pincode'] == selectedPincode) &&
+                (selectedCountry == null ||
+                    location['country'] == selectedCountry);
+          }).toList();
     }
 
     setState(() {});
   }
 
-  Future<void> _makePhoneCall(String phoneNumber) async {
+  Future<void> _makePhoneCall(String? phoneNumber) async {
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context, 'phone_number_not_available'))),
+      );
+      return;
+    }
     final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not launch phone call to $phoneNumber')),
+        SnackBar(content: Text('${AppLocalizations.of(context, 'could_not_launch_phone_call')}$phoneNumber')),
       );
     }
   }
@@ -119,6 +126,14 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
 
+      if (token == null) {
+        setState(() {
+          error = AppLocalizations.of(context, 'please_login_search_services');
+          isLoading = false;
+        });
+        return;
+      }
+
       var headers = {'Authorization': 'Bearer $token'};
 
       var dio = Dio();
@@ -129,14 +144,14 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
 
       if (response.statusCode == 200) {
         setState(() {
-          services = response.data['data']['services'];
+          services = response.data['data']['services'] ?? [];
           filteredServices = services; // Show all services by default
           isLoading = false;
           extractUniqueLocations(); // Extract location data after fetching
         });
       } else {
         setState(() {
-          error = response.statusMessage;
+          error = response.statusMessage ?? AppLocalizations.of(context, 'failed_to_fetch_services');
           isLoading = false;
         });
       }
@@ -155,7 +170,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
     return theme.buildPageBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: theme.buildAppBar(context, 'Service Search'),
+        appBar: theme.buildAppBar(context, AppLocalizations.of(context, 'service_search')),
         body: Column(
           children: [
             Padding(
@@ -168,7 +183,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                     TextField(
                       controller: _searchController,
                       decoration: theme.inputDecoration(
-                        labelText: 'Search for services...',
+                        labelText: AppLocalizations.of(context, 'search_for_services'),
                         prefixIcon: Icons.search,
                         context: context,
                         suffixIcon: Row(
@@ -206,14 +221,14 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    'Filter Services',
+                                                    AppLocalizations.of(context, 'filter_services'),
                                                     style: theme.headingStyle(
                                                       context,
                                                     ),
                                                   ),
                                                   theme.buildDivider(),
                                                   Text(
-                                                    'Location',
+                                                    AppLocalizations.of(context, 'location'),
                                                     style: theme.titleStyle,
                                                   ),
                                                   const SizedBox(height: 16),
@@ -223,7 +238,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                                     value: selectedState,
                                                     decoration: theme
                                                         .dropdownDecoration(
-                                                          labelText: 'State',
+                                                          labelText: AppLocalizations.of(context, 'state'),
                                                           prefixIcon:
                                                               Icons.location_on,
                                                           context: context,
@@ -257,7 +272,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                                     value: selectedCity,
                                                     decoration: theme
                                                         .dropdownDecoration(
-                                                          labelText: 'City',
+                                                          labelText: AppLocalizations.of(context, 'city'),
                                                           prefixIcon:
                                                               Icons
                                                                   .location_city,
@@ -291,7 +306,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                                     value: selectedDistrict,
                                                     decoration: theme
                                                         .dropdownDecoration(
-                                                          labelText: 'District',
+                                                          labelText: AppLocalizations.of(context, 'district'),
                                                           prefixIcon: Icons.map,
                                                           context: context,
                                                         ),
@@ -345,7 +360,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                                                 context,
                                                               ),
                                                           child: Text(
-                                                            'Clear Filters',
+                                                            AppLocalizations.of(context, 'clear_filters'),
                                                             style: TextStyle(
                                                               color:
                                                                   Theme.of(
@@ -368,8 +383,8 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                                               .primaryButtonStyle(
                                                                 context,
                                                               ),
-                                                          child: const Text(
-                                                            'Apply',
+                                                          child: Text(
+                                                            AppLocalizations.of(context, 'apply'),
                                                           ),
                                                         ),
                                                       ),
@@ -382,110 +397,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                 );
                               },
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.sort),
-                              onPressed: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  shape: const RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(20),
-                                    ),
-                                  ),
-                                  builder:
-                                      (context) => Container(
-                                        padding: const EdgeInsets.all(24),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Sort By Price',
-                                              style: theme.headingStyle(
-                                                context,
-                                              ),
-                                            ),
-                                            theme.buildDivider(),
-                                            ListTile(
-                                              leading: const Icon(
-                                                Icons.arrow_upward,
-                                              ),
-                                              title: const Text(
-                                                'Price: Low to High',
-                                              ),
-                                              selected:
-                                                  sortOption == 'lowToHigh',
-                                              selectedTileColor: Theme.of(
-                                                context,
-                                              ).primaryColor.withOpacity(0.1),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              onTap: () {
-                                                setState(
-                                                  () =>
-                                                      sortOption = 'lowToHigh',
-                                                );
-                                                applyFiltersAndSort();
-                                                Navigator.pop(context);
-                                              },
-                                            ),
-                                            const SizedBox(height: 8),
-                                            ListTile(
-                                              leading: const Icon(
-                                                Icons.arrow_downward,
-                                              ),
-                                              title: const Text(
-                                                'Price: High to Low',
-                                              ),
-                                              selected:
-                                                  sortOption == 'highToLow',
-                                              selectedTileColor: Theme.of(
-                                                context,
-                                              ).primaryColor.withOpacity(0.1),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              onTap: () {
-                                                setState(
-                                                  () =>
-                                                      sortOption = 'highToLow',
-                                                );
-                                                applyFiltersAndSort();
-                                                Navigator.pop(context);
-                                              },
-                                            ),
-                                            const SizedBox(height: 8),
-                                            ListTile(
-                                              leading: const Icon(Icons.clear),
-                                              title: const Text(
-                                                'Clear Sorting',
-                                              ),
-                                              selected: sortOption == 'none',
-                                              selectedTileColor: Theme.of(
-                                                context,
-                                              ).primaryColor.withOpacity(0.1),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              onTap: () {
-                                                setState(
-                                                  () => sortOption = 'none',
-                                                );
-                                                applyFiltersAndSort();
-                                                Navigator.pop(context);
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                );
-                              },
-                            ),
+
                           ],
                         ),
                       ),
@@ -494,8 +406,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                     // Active filters display
                     if (selectedState != null ||
                         selectedCity != null ||
-                        selectedDistrict != null ||
-                        sortOption != 'none')
+                        selectedDistrict != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Wrap(
@@ -504,7 +415,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                           children: [
                             if (selectedState != null)
                               Chip(
-                                label: Text('State: $selectedState'),
+                                label: Text('${AppLocalizations.of(context, 'state')}: $selectedState'),
                                 deleteIcon: const Icon(Icons.close, size: 16),
                                 onDeleted: () {
                                   setState(() => selectedState = null);
@@ -513,7 +424,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                               ),
                             if (selectedCity != null)
                               Chip(
-                                label: Text('City: $selectedCity'),
+                                label: Text('${AppLocalizations.of(context, 'city')}: $selectedCity'),
                                 deleteIcon: const Icon(Icons.close, size: 16),
                                 onDeleted: () {
                                   setState(() => selectedCity = null);
@@ -522,24 +433,14 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                               ),
                             if (selectedDistrict != null)
                               Chip(
-                                label: Text('District: $selectedDistrict'),
+                                label: Text('${AppLocalizations.of(context, 'district')}: $selectedDistrict'),
                                 deleteIcon: const Icon(Icons.close, size: 16),
                                 onDeleted: () {
                                   setState(() => selectedDistrict = null);
                                   applyFiltersAndSort();
                                 },
                               ),
-                            if (sortOption != 'none')
-                              Chip(
-                                label: Text(
-                                  'Sort: ${sortOption == 'lowToHigh' ? 'Low to High' : 'High to Low'}',
-                                ),
-                                deleteIcon: const Icon(Icons.close, size: 16),
-                                onDeleted: () {
-                                  setState(() => sortOption = 'none');
-                                  applyFiltersAndSort();
-                                },
-                              ),
+
                           ],
                         ),
                       ),
@@ -567,12 +468,12 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                 color: Colors.red,
                               ),
                               const SizedBox(height: 16),
-                              Text('Error: $error', style: theme.titleStyle),
+                              Text('${AppLocalizations.of(context, 'error_prefix')} $error', style: theme.titleStyle),
                               const SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: fetchServices,
                                 style: theme.primaryButtonStyle(context),
-                                child: const Text('Retry'),
+                                child: Text(AppLocalizations.of(context, 'retry')),
                               ),
                             ],
                           ),
@@ -591,12 +492,12 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No services found',
+                                AppLocalizations.of(context, 'no_services_found'),
                                 style: theme.titleStyle,
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Try adjusting your filters or search terms',
+                                AppLocalizations.of(context, 'try_adjusting_filters_search_terms'),
                                 style: theme.subtitleStyle,
                                 textAlign: TextAlign.center,
                               ),
@@ -609,120 +510,154 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                         itemCount: filteredServices.length,
                         itemBuilder: (context, index) {
                           final service = filteredServices[index];
-                          return theme.buildCard(
-                            padding: const EdgeInsets.all(16),
+                          final userObj = service['user'];
+                          final userName = (userObj is Map) ? (userObj['name'] ?? AppLocalizations.of(context, 'unknown_user')) : AppLocalizations.of(context, 'unknown_user');
+                          String categoryName = '';
+                          if (service['categoryPrices'] != null && (service['categoryPrices'] as List).isNotEmpty) {
+                            categoryName = service['categoryPrices'][0]['category']?['name'] ?? '';
+                          }
+                          final location = service['location'] ?? {};
+                          final address = location['address'] ?? '';
+                          final city = location['city'] ?? '';
+                          final state = location['state'] ?? '';
+                          final userPhone = service['user']?['phone'];
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: Colors.grey.withOpacity(0.1),
+                                width: 1,
+                              ),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      decoration: theme.iconBoxDecoration(
-                                        context,
-                                      ),
-                                      padding: const EdgeInsets.all(12),
-                                      child: Text(
-                                        service['user']['name'][0]
-                                            .toUpperCase(),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).primaryColor,
-                                          fontSize: 18,
+                                Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+
+                                      
+                                      // Details
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    categoryName,
+                                                    style: const TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.black87,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              userName,
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: Colors.grey[700],
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on,
+                                                  size: 14,
+                                                  color: Colors.grey[500],
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    [if (address.isNotEmpty) address, if (city.isNotEmpty) city, if (state.isNotEmpty) state].join(', '),
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            service['user']['name'],
-                                            style: theme.titleStyle,
+                                    ],
+                                  ),
+                                ),
+                                
+                                if (service['tags'] != null && (service['tags'] as List).isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 20, right: 20, bottom: 16),
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        for (var tag in service['tags'])
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[100],
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: Colors.grey[300]!),
+                                            ),
+                                            child: Text(
+                                              tag.toString(),
+                                              style: TextStyle(
+                                                color: Colors.grey[700],
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                           ),
-                                          Text(
-                                            service['category']['name'],
-                                            style: theme.subtitleStyle,
-                                          ),
-                                        ],
-                                      ),
+                                      ],
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).primaryColor,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        '₹${service['price']}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                theme.buildDivider(verticalPadding: 12),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.location_on,
-                                      size: 16,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        '${service['location']['city']}, ${service['location']['state']}',
-                                        style: theme.subtitleStyle,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    for (var tag in service['tags'])
-                                      Chip(
-                                        label: Text(tag),
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.1),
-                                        labelStyle: TextStyle(
-                                          color: Theme.of(context).primaryColor,
-                                          fontSize: 12,
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                        materialTapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
+                                  ),
+
+                                // Call Button area
+                                Container(
                                   width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed:
-                                        () => _makePhoneCall(
-                                          service['user']['phone'],
-                                        ),
-                                    icon: const Icon(Icons.call),
-                                    label: const Text('Call Now'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      top: BorderSide(color: Colors.grey.withOpacity(0.1)),
+                                    ),
+                                  ),
+                                  child: TextButton.icon(
+                                    onPressed: () => _makePhoneCall(userPhone),
+                                    icon: Icon(Icons.call, color: Theme.of(context).primaryColor),
+                                    label: Text(
+                                      AppLocalizations.of(context, 'call_now'),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Theme.of(context).primaryColor,
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                          bottomLeft: Radius.circular(20),
+                                          bottomRight: Radius.circular(20),
+                                        ),
                                       ),
                                     ),
                                   ),

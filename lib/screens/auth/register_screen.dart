@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -62,8 +63,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (responseData['status'] == "success" && mounted) {
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Registration successful! Please login.'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context, 'registration_successful')),
               backgroundColor: Colors.green,
             ),
           );
@@ -94,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       // Handle error with user feedback
       if (mounted) {
-        String errorMessage = 'Registration failed';
+        String errorMessage = AppLocalizations.of(context, 'registration_failed');
 
         // Try to extract more specific error message if available
         if (e is DioException && e.response != null) {
@@ -118,254 +119,216 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = AppTheme.style;
-    final isDesktop = MediaQuery.of(context).size.width > 768;
-    final formWidth = isDesktop ? 500.0 : double.infinity;
-    final horizontalPadding =
-        isDesktop
-            ? (MediaQuery.of(context).size.width - formWidth) / 2
-            : ThemeStyle.defaultPadding;
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
 
-    return theme.buildPageBackground(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(
-          horizontal: horizontalPadding,
-          vertical: ThemeStyle.defaultPadding,
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              Image.asset('assets/logo.jpeg', height: isDesktop ? 160 : 120),
-              const SizedBox(height: 30),
-              Text(
-                'Create Account',
-                style: theme
-                    .headingStyle(context)
-                    .copyWith(fontSize: isDesktop ? 32 : 24),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Please fill in your details to create an account',
-                style: theme.titleStyle.copyWith(
-                  color: Colors.grey[600],
-                  fontSize: isDesktop ? 18 : 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 30),
-              theme.buildCard(
-                child: Container(
-                  width: formWidth,
-                  padding: EdgeInsets.all(isDesktop ? 40 : 20),
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _fullNameController,
-                        decoration: theme
-                            .inputDecoration(
-                              labelText: 'Full Name',
-                              prefixIcon: Icons.person_outline,
-                              context: context,
-                            )
-                            .copyWith(
-                              contentPadding: EdgeInsets.all(
-                                isDesktop ? 20 : 12,
-                              ),
-                            ),
-                        style: TextStyle(fontSize: isDesktop ? 16 : 14),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your full name';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: isDesktop ? 30 : 20),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: theme
-                            .inputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icons.email_outlined,
-                              context: context,
-                            )
-                            .copyWith(
-                              contentPadding: EdgeInsets.all(
-                                isDesktop ? 20 : 12,
-                              ),
-                            ),
-                        style: TextStyle(fontSize: isDesktop ? 16 : 14),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: isDesktop ? 30 : 20),
-                      TextFormField(
-                        controller: _phoneController,
-                        decoration: theme
-                            .inputDecoration(
-                              labelText: 'Phone Number',
-                              prefixIcon: Icons.phone_outlined,
-                              context: context,
-                            )
-                            .copyWith(
-                              contentPadding: EdgeInsets.all(
-                                isDesktop ? 20 : 12,
-                              ),
-                            ),
-                        style: TextStyle(fontSize: isDesktop ? 16 : 14),
-                        keyboardType: TextInputType.phone,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your phone number';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: isDesktop ? 30 : 20),
-                      TextFormField(
-                        controller: _passwordController,
-                        decoration: theme
-                            .inputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: Icons.lock_outline,
-                              context: context,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: Theme.of(context).primaryColor,
-                                  size: isDesktop ? 24 : 20,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                              ),
-                            )
-                            .copyWith(
-                              contentPadding: EdgeInsets.all(
-                                isDesktop ? 20 : 12,
-                              ),
-                            ),
-                        style: TextStyle(fontSize: isDesktop ? 16 : 14),
-                        obscureText: _obscurePassword,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: isDesktop ? 30 : 20),
-                      TextFormField(
-                        controller: _confirmPasswordController,
-                        decoration: theme
-                            .inputDecoration(
-                              labelText: 'Confirm Password',
-                              prefixIcon: Icons.lock_outline,
-                              context: context,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscureConfirmPassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: Theme.of(context).primaryColor,
-                                  size: isDesktop ? 24 : 20,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscureConfirmPassword =
-                                        !_obscureConfirmPassword;
-                                  });
-                                },
-                              ),
-                            )
-                            .copyWith(
-                              contentPadding: EdgeInsets.all(
-                                isDesktop ? 20 : 12,
-                              ),
-                            ),
-                        style: TextStyle(fontSize: isDesktop ? 16 : 14),
-                        obscureText: _obscureConfirmPassword,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please confirm your password';
-                          }
-                          if (value != _passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: isDesktop ? 30 : 20),
-                      TextFormField(
-                        controller: _referralCodeController,
-                        decoration: theme
-                            .inputDecoration(
-                              labelText: 'Referral Code (Optional)',
-                              prefixIcon: Icons.card_giftcard_outlined,
-                              context: context,
-                            )
-                            .copyWith(
-                              contentPadding: EdgeInsets.all(
-                                isDesktop ? 20 : 12,
-                              ),
-                            ),
-                        style: TextStyle(fontSize: isDesktop ? 16 : 14),
-                      ),
-                      SizedBox(height: isDesktop ? 40 : 30),
-                      SizedBox(
-                        width: double.infinity,
-                        height: isDesktop ? 56 : 48,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _register,
-                          child:
-                              _isLoading
-                                  ? const CircularProgressIndicator()
-                                  : Text(
-                                    'Register',
-                                    style: TextStyle(
-                                      fontSize: isDesktop ? 18 : 16,
-                                    ),
-                                  ),
-                        ),
-                      ),
-                      SizedBox(height: isDesktop ? 30 : 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Already have an account? ',
-                            style: TextStyle(fontSize: isDesktop ? 16 : 14),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushReplacementNamed(context, '/login');
-                            },
-                            child: Text(
-                              'Login',
-                              style: TextStyle(fontSize: isDesktop ? 16 : 14),
-                            ),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.white, ThemeStyle.backgroundColor],
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    // Brand Logo
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: ThemeStyle.primaryColor.withOpacity(0.1),
+                            blurRadius: 30,
+                            offset: const Offset(0, 10),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: Image.asset('assets/logo.jpeg', height: 100, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Header
+                    Text(
+                      AppLocalizations.of(context, 'create_account'),
+                      style: theme.headingStyle(context),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      AppLocalizations.of(context, 'join_us_today'),
+                      style: TextStyle(
+                        color: ThemeStyle.textSecondary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Form Card
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: theme.cardDecoration,
+                      child: Column(
+                        children: [
+                          _buildTextField(
+                            controller: _fullNameController,
+                            label: AppLocalizations.of(context, 'full_name'),
+                            icon: Icons.person_outline_rounded,
+                            theme: theme,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildTextField(
+                            controller: _emailController,
+                            label: AppLocalizations.of(context, 'email_address'),
+                            icon: Icons.alternate_email_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                            theme: theme,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildTextField(
+                            controller: _phoneController,
+                            label: AppLocalizations.of(context, 'phone_number'),
+                            icon: Icons.phone_android_rounded,
+                            keyboardType: TextInputType.phone,
+                            theme: theme,
+                            isOptional: true,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildPasswordField(
+                            controller: _passwordController,
+                            label: AppLocalizations.of(context, 'password'),
+                            obscureText: _obscurePassword,
+                            onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+                            theme: theme,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildPasswordField(
+                            controller: _confirmPasswordController,
+                            label: AppLocalizations.of(context, 'confirm_password'),
+                            obscureText: _obscureConfirmPassword,
+                            onToggle: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                            theme: theme,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) return AppLocalizations.of(context, 'please_confirm_password');
+                              if (value != _passwordController.text) return AppLocalizations.of(context, 'passwords_do_not_match');
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          _buildTextField(
+                            controller: _referralCodeController,
+                            label: AppLocalizations.of(context, 'referral_code_optional'),
+                            icon: Icons.card_giftcard_rounded,
+                            theme: theme,
+                            isLast: true,
+                            isOptional: true,
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          theme.buildPrimaryButton(
+                            text: AppLocalizations.of(context, 'register'),
+                            isLoading: _isLoading,
+                            onPressed: _register,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Login Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context, 'already_have_account'),
+                          style: TextStyle(color: ThemeStyle.textSecondary, fontSize: 15),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
+                          child: Text(
+                            AppLocalizations.of(context, 'login'),
+                            style: TextStyle(
+                              color: ThemeStyle.primaryColor,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required ThemeStyle theme,
+    TextInputType keyboardType = TextInputType.text,
+    bool isLast = false,
+    bool isOptional = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: theme.inputDecoration(
+        labelText: label,
+        prefixIcon: icon,
+      ),
+      keyboardType: keyboardType,
+      textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
+      validator: (value) {
+        if (!isOptional && (value == null || value.isEmpty)) return '${AppLocalizations.of(context, 'please_enter')} $label';
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscureText,
+    required VoidCallback onToggle,
+    required ThemeStyle theme,
+    FormFieldValidator<String>? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: theme.inputDecoration(
+        labelText: label,
+        prefixIcon: Icons.lock_outline_rounded,
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+            color: ThemeStyle.primaryColor,
+          ),
+          onPressed: onToggle,
+        ),
+      ),
+      obscureText: obscureText,
+      validator: validator ?? (value) {
+        if (value == null || value.isEmpty) return '${AppLocalizations.of(context, 'please_enter')} $label';
+        return null;
+      },
     );
   }
 }

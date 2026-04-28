@@ -16,9 +16,9 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.serviceinfotek.app"
+    namespace = "com.jirehservice.app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.serviceinfotek.app"
+        applicationId = "com.jirehservice.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

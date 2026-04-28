@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/location_details_form.dart';
 import '../../widgets/service_subscription_sheet.dart';
+import '../../l10n/app_localizations.dart';
 
 class EditServicePostScreen extends StatefulWidget {
   final Map<String, dynamic> service;
@@ -27,6 +28,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
 
   List<Map<String, dynamic>> _selectedCategories = [];
   List<Map<String, dynamic>> _categories = [];
@@ -52,6 +54,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
     _cityController.text = location['city'] ?? '';
     _pincodeController.text = location['pincode'] ?? '';
     _countryController.text = location['country'] ?? '';
+    _addressController.text = location['address'] ?? '';
 
     // Fetch categories and other data
     _fetchCategories();
@@ -103,7 +106,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching service details: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context, 'error_fetching_service_details')} $e')),
       );
     }
   }
@@ -213,14 +216,14 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            title: const Text('Company Information Required'),
-            content: const Text(
-              'You need to add company information before posting a company service.',
+            title: Text(AppLocalizations.of(context, 'company_profile_required')),
+            content: Text(
+              AppLocalizations.of(context, 'company_profile_required_desc'),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(context, 'cancel')),
               ),
               TextButton(
                 onPressed: () {
@@ -239,7 +242,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).primaryColor,
                 ),
-                child: const Text('Add Company Info'),
+                child: Text(AppLocalizations.of(context, 'add_company_info')),
               ),
             ],
           ),
@@ -251,7 +254,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
 
     if (_selectedCategories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one category.')),
+        SnackBar(content: Text(AppLocalizations.of(context, 'please_select_at_least_one_category'))),
       );
       return;
     }
@@ -264,8 +267,8 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
 
     if (!allCategoriesHavePrices) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a price for each category.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context, 'please_enter_price_each_category')),
         ),
       );
       return;
@@ -280,7 +283,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
 
       if (_selectedCompanyId == null || _selectedCompanyId!.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a company')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'please_select_a_company'))),
         );
         return;
       }
@@ -310,6 +313,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
         "city": _cityController.text,
         "pincode": _pincodeController.text,
         "country": _countryController.text,
+        "address": _addressController.text,
       },
       "isCompanyPost": _isCompanyPost,
     };
@@ -336,18 +340,18 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Service updated successfully!')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'service_updated_successfully'))),
         );
         Navigator.of(context).pop(true); // Return true to indicate success
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: ${response.statusMessage}')),
+          SnackBar(content: Text('${AppLocalizations.of(context, 'failed_prefix')} ${response.statusMessage}')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context, 'error_prefix')} $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -371,7 +375,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Edit Service Post',
+          AppLocalizations.of(context, 'edit_service_post'),
           style: theme.appBarTitleStyle(context),
         ),
         centerTitle: true,
@@ -392,10 +396,10 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Categories', style: theme.titleStyle),
+                      Text(AppLocalizations.of(context, 'categories'), style: theme.titleStyle),
                       const SizedBox(height: 4),
                       Text(
-                        'Add up to ${maxCategories} categories for your service',
+                        '${AppLocalizations.of(context, 'add_up_to')} ${maxCategories} ${AppLocalizations.of(context, 'categories').toLowerCase()}',
                         style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                       const SizedBox(height: 16),
@@ -406,7 +410,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                               textFieldConfiguration: TextFieldConfiguration(
                                 controller: _categoryController,
                                 decoration: theme.searchDropdownDecoration(
-                                  labelText: 'Search categories',
+                                  labelText: AppLocalizations.of(context, 'search_select_category'),
                                   prefixIcon: Icons.search,
                                   context: context,
                                 ),
@@ -439,9 +443,9 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
 
                                 if (alreadySelected) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text(
-                                        'Category already selected',
+                                        AppLocalizations.of(context, 'category_already_selected'),
                                       ),
                                     ),
                                   );
@@ -454,7 +458,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'You can only add up to $maxCategories categories',
+                                        '${AppLocalizations.of(context, 'you_can_only_add_up_to')} $maxCategories ${AppLocalizations.of(context, 'categories').toLowerCase()}',
                                       ),
                                     ),
                                   );
@@ -495,19 +499,19 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                                 child: TextFormField(
                                   initialValue:
                                       category['price']?.toString() ?? '',
-                                  decoration: const InputDecoration(
-                                    labelText: 'Price',
+                                  decoration: InputDecoration(
+                                    labelText: AppLocalizations.of(context, 'price'),
                                     prefixText: '₹',
-                                    border: OutlineInputBorder(),
+                                    border: const OutlineInputBorder(),
                                   ),
                                   keyboardType: TextInputType.number,
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Required';
+                                      return AppLocalizations.of(context, 'required');
                                     }
                                     final price = double.tryParse(value);
                                     if (price == null || price <= 0) {
-                                      return 'Invalid';
+                                      return AppLocalizations.of(context, 'invalid');
                                     }
                                     return null;
                                   },
@@ -532,12 +536,12 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Post Type', style: theme.titleStyle),
+                      Text(AppLocalizations.of(context, 'post_type'), style: theme.titleStyle),
                       const SizedBox(height: 16),
                       SwitchListTile(
-                        title: const Text('Post as Company'),
-                        subtitle: const Text(
-                          'Enable to post this service under your company profile',
+                        title: Text(AppLocalizations.of(context, 'post_as_company')),
+                        subtitle: Text(
+                          AppLocalizations.of(context, 'enable_to_post_service_under_company'),
                         ),
                         value: _isCompanyPost,
                         onChanged: (value) {
@@ -554,7 +558,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                           ElevatedButton.icon(
                             onPressed: _showCompanyInfoDialog,
                             icon: const Icon(Icons.add_business),
-                            label: const Text('Add Company Information'),
+                            label: Text(AppLocalizations.of(context, 'add_company_info')),
                             style: theme.primaryButtonStyle(context),
                           )
                         else
@@ -562,7 +566,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                             // This expects String values
                             value: _selectedCompanyId,
                             decoration: theme.dropdownDecoration(
-                              labelText: 'Select Company',
+                              labelText: AppLocalizations.of(context, 'select_company'),
                               prefixIcon: Icons.business,
                               context: context,
                             ),
@@ -584,7 +588,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                             },
                             validator: (value) {
                               if (_isCompanyPost && value == null) {
-                                return 'Please select a company';
+                                return AppLocalizations.of(context, 'please_select_a_company');
                               }
                               return null;
                             },
@@ -601,7 +605,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Location Details', style: theme.titleStyle),
+                      Text(AppLocalizations.of(context, 'location_details'), style: theme.titleStyle),
                       const SizedBox(height: 16),
                       LocationDetailsForm(
                         districtController: _districtController,
@@ -609,6 +613,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                         cityController: _cityController,
                         pincodeController: _pincodeController,
                         countryController: _countryController,
+                        addressController: _addressController,
                       ),
                     ],
                   ),
@@ -630,7 +635,7 @@ class _EditServicePostScreenState extends State<EditServicePostScreen> {
                               color: Colors.white,
                             ),
                           )
-                          : const Text('Update Service'),
+                          : Text(AppLocalizations.of(context, 'update_service')),
                 ),
               ],
             ),

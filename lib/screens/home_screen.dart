@@ -9,7 +9,8 @@ import 'package:app/widgets/government_jobs_section.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_drawer.dart';
-import '../widgets/service_subscription_sheet.dart';
+import '../../widgets/service_subscription_sheet.dart';
+import '../../l10n/app_localizations.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -53,17 +54,7 @@ class HomeScreen extends StatelessWidget {
     var dio = Dio();
 
     // Handle Job Post (free service)
-    if (serviceType == 'Job Post') {
-      if (userData != null &&
-          userData['company'] == null &&
-          userData['skippedCompanyInfo'] != true) {
-        final result = await Navigator.pushNamed(context, '/company-info');
-        if (result == true && context.mounted) {
-          await authProvider.refreshUserData();
-          _handleCardTap(context, serviceType);
-        }
-        return;
-      }
+    if (serviceType == 'job-post') {
       Navigator.pushNamed(context, '/job-post');
       return;
     }
@@ -91,33 +82,23 @@ class HomeScreen extends StatelessWidget {
 
         hasCurrentServiceSubscription = subscriptions.any(
           (sub) =>
-              sub['type'] == serviceType.toUpperCase().replaceAll(' ', '_') &&
+              sub['type'] == serviceType.toUpperCase().replaceAll('-', '_') &&
               DateTime.parse(sub['endDate']).isAfter(DateTime.now()),  // Add this line
         );
       }
 
       // Handle Service Post
-      if (serviceType == 'Service Post') {
-        if (userData != null &&
-            userData['company'] == null &&
-            userData['skippedCompanyInfo'] != true) {
-          final result = await Navigator.pushNamed(context, '/company-info');
-          if (result == true && context.mounted) {
-            await authProvider.refreshUserData();
-            _handleCardTap(context, serviceType);
-          }
-          return;
-        }
+      if (serviceType == 'service-post') {
         Navigator.pushNamed(context, '/service-post');
         return;
       }
 
       // Handle Service Search and Job Search
-      if ((serviceType == 'Service Search' || serviceType == 'Job Search') &&
+      if ((serviceType == 'service-search' || serviceType == 'job-search') &&
           (hasServicePostSubscription || hasCurrentServiceSubscription)) {
         Navigator.pushNamed(
           context,
-          '/${serviceType.toLowerCase().replaceAll(' ', '-')}',
+          '/$serviceType',
         );
         return;
       }
@@ -129,7 +110,7 @@ class HomeScreen extends StatelessWidget {
 
     // Show subscription sheet for users without required subscription
     switch (serviceType) {
-      case 'Service Search':
+      case 'service-search':
         _showSubscriptionSheet(
           context,
           serviceType: serviceType,
@@ -142,7 +123,7 @@ class HomeScreen extends StatelessWidget {
           isPremium: true,
         );
         break;
-      case 'Job Search':
+      case 'job-search':
         _showSubscriptionSheet(
           context,
           serviceType: serviceType,
@@ -156,7 +137,7 @@ class HomeScreen extends StatelessWidget {
           isPremium: true,
         );
         break;
-      case 'Service Post':
+      case 'service-post':
         _showSubscriptionSheet(
           context,
           serviceType: serviceType,
@@ -188,31 +169,35 @@ class HomeScreen extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _handleCardTap(context, title),
+          onTap: () => _handleCardTap(context, route.replaceAll('/', '')),
           borderRadius: BorderRadius.circular(ThemeStyle.cardBorderRadius),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: EdgeInsets.all(isDesktop ? 24 : 16),
-                decoration: theme.iconBoxDecoration(context),
+                padding: EdgeInsets.all(isDesktop ? 24 : 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).primaryColor.withOpacity(0.15),
+                      Theme.of(context).primaryColor.withOpacity(0.05),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Icon(
                   icon,
-                  size:
-                      isDesktop
-                          ? ThemeStyle.iconSize * 1.5
-                          : ThemeStyle.iconSize,
+                  size: isDesktop ? 40 : 32,
                   color: Theme.of(context).primaryColor,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 title,
                 style: theme.titleStyle.copyWith(
-                  fontSize:
-                      isDesktop
-                          ? theme.titleStyle.fontSize! * 1.2
-                          : theme.titleStyle.fontSize,
+                  fontSize: isDesktop ? 18 : 16,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -227,131 +212,144 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final userData = authProvider.userData;
-
-    // Debug prints for user data and company status
-    print('User Data: $userData');
-    print('Company Info: ${userData?['company']}');
-    print('Skipped Company Info: ${userData?['skippedCompanyInfo']}');
-
     final theme = AppTheme.style;
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
 
     return theme.buildPageBackground(
-      child: SafeArea(
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            title: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Serviceinfo',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isDesktop ? 24 : 20,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'tek',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isDesktop ? 24 : 20,
-                    ),
-                  ),
-                ],
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                AppLocalizations.of(context, 'app_name_main'),
+                style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900),
               ),
-            ),
-            centerTitle: true,
+              Text(
+                AppLocalizations.of(context, 'app_name_suffix'),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
-          drawer: const AppDrawer(),
-          body: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              horizontal:
-                  isDesktop
-                      ? (MediaQuery.of(context).size.width - 1200) / 2
-                      : 0,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(
-                      isDesktop ? 32.0 : ThemeStyle.defaultPadding,
+        ),
+        drawer: const AppDrawer(),
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Modern Hero Section
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(isDesktop ? 40 : 20),
+                margin: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                decoration: BoxDecoration(
+                  gradient: theme.mainGradient,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: ThemeStyle.primaryColor.withOpacity(0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
                     ),
-                    child: RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Welcome to Serviceinfo',
-                            style: TextStyle(
-                              fontSize: isDesktop ? 32 : 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                          TextSpan(
-                            text: 'tek',
-                            style: TextStyle(
-                              fontSize: isDesktop ? 32 : 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${AppLocalizations.of(context, 'welcome_back')}${userData?['name'] ?? 'User'}! 👋',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal:
-                          isDesktop ? 32.0 : ThemeStyle.defaultPadding - 4,
+                    const SizedBox(height: 8),
+                    Text(
+                      AppLocalizations.of(context, 'create_profile_desc'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        height: 1.3,
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                    child: GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: isDesktop ? 4 : 2,
-                      crossAxisSpacing: isDesktop ? 32 : 20,
-                      mainAxisSpacing: isDesktop ? 32 : 20,
-                      childAspectRatio: isDesktop ? 1.2 : 0.9,
-                      children: [
-                        _buildCard(
-                          context,
-                          'Service Search',
-                          Icons.search,
-                          '/service-search',
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Navigate to profile creation or settings
+                        Navigator.pushNamed(context, '/profile'); // Adjust route if needed
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: ThemeStyle.primaryColor,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        _buildCard(
-                          context,
-                          'Service Post',
-                          Icons.post_add,
-                          '/service-post',
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context, 'complete_profile'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                         ),
-                        _buildCard(
-                          context,
-                          'Job Search',
-                          Icons.search_outlined,
-                          '/job-search',
-                        ),
-                        _buildCard(
-                          context,
-                          'Job Post',
-                          Icons.work,
-                          '/job-post',
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  const GovernmentJobsSection(),
-                ],
+                  ],
+                ),
               ),
-            ),
+
+              theme.buildSectionHeader(AppLocalizations.of(context, 'explore_services')),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: isDesktop ? 4 : 2,
+                  crossAxisSpacing: 20,
+                  mainAxisSpacing: 20,
+                  childAspectRatio: isDesktop ? 1.0 : 0.95,
+                  children: [
+                    _buildCard(
+                      context,
+                      AppLocalizations.of(context, 'service_search'),
+                      Icons.search_rounded,
+                      '/service-search',
+                    ),
+                    _buildCard(
+                      context,
+                      AppLocalizations.of(context, 'service_post'),
+                      Icons.add_business_rounded,
+                      '/service-post',
+                    ),
+                    _buildCard(
+                      context,
+                      AppLocalizations.of(context, 'job_search'),
+                      Icons.work_outline_rounded,
+                      '/job-search',
+                    ),
+                    _buildCard(
+                      context,
+                      AppLocalizations.of(context, 'job_post'),
+                      Icons.post_add_rounded,
+                      '/job-post',
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              const GovernmentJobsSection(),
+              const SizedBox(height: 40),
+            ],
           ),
         ),
       ),

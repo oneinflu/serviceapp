@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_drawer.dart';
 import 'package:app/screens/services/edit_service_post_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class MyServicePostsScreen extends StatefulWidget {
   const MyServicePostsScreen({super.key});
@@ -110,13 +111,13 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Service post deleted successfully')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'service_deleted_success'))),
         );
         fetchMyServices(); // Refresh the list
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting service post: ${e.toString()}')),
+        SnackBar(content: Text('${AppLocalizations.of(context, 'error_deleting_service')}: ${e.toString()}')),
       );
     }
   }
@@ -128,7 +129,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
     return theme.buildPageBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: theme.buildAppBar(context, 'My Service Posts'),
+        appBar: theme.buildAppBar(context, AppLocalizations.of(context, 'my_service_posts')),
         drawer: const AppDrawer(),
         body: Column(
           children: [
@@ -140,7 +141,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                     child: TextField(
                       controller: _searchController,
                       decoration: theme.searchDropdownDecoration(
-                        labelText: 'Search services',
+                        labelText: AppLocalizations.of(context, 'search_services'),
                         prefixIcon: Icons.search,
                         context: context,
                       ),
@@ -161,7 +162,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          'Filter Services',
+                                          AppLocalizations.of(context, 'filter_services'),
                                           style: theme.headingStyle(context),
                                         ),
                                         const SizedBox(height: 16),
@@ -169,22 +170,22 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                         DropdownButtonFormField<String>(
                                           value: selectedCompanyFilter,
                                           decoration: theme.dropdownDecoration(
-                                            labelText: 'Post Type',
+                                            labelText: AppLocalizations.of(context, 'post_type'),
                                             prefixIcon: Icons.business,
                                             context: context,
                                           ),
-                                          items: const [
+                                          items: [
                                             DropdownMenuItem(
                                               value: null,
-                                              child: Text('All Posts'),
+                                              child: Text(AppLocalizations.of(context, 'all_posts')),
                                             ),
                                             DropdownMenuItem(
                                               value: 'personal',
-                                              child: Text('Personal Posts'),
+                                              child: Text(AppLocalizations.of(context, 'personal_posts')),
                                             ),
                                             DropdownMenuItem(
                                               value: 'company',
-                                              child: Text('Company Posts'),
+                                              child: Text(AppLocalizations.of(context, 'company_posts')),
                                             ),
                                           ],
                                           onChanged: (value) {
@@ -199,7 +200,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                         DropdownButtonFormField<String>(
                                           value: selectedCategory,
                                           decoration: theme.dropdownDecoration(
-                                            labelText: 'Category',
+                                            labelText: AppLocalizations.of(context, 'category'),
                                             prefixIcon: Icons.category,
                                             context: context,
                                           ),
@@ -232,7 +233,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                         DropdownButtonFormField<String>(
                                           value: selectedState,
                                           decoration: theme.dropdownDecoration(
-                                            labelText: 'State',
+                                            labelText: AppLocalizations.of(context, 'state'),
                                             prefixIcon: Icons.location_on,
                                             context: context,
                                           ),
@@ -264,7 +265,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                         DropdownButtonFormField<String>(
                                           value: selectedCity,
                                           decoration: theme.dropdownDecoration(
-                                            labelText: 'City',
+                                            labelText: AppLocalizations.of(context, 'city'),
                                             prefixIcon: Icons.location_city,
                                             context: context,
                                           ),
@@ -311,8 +312,8 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                               style: theme.secondaryButtonStyle(
                                                 context,
                                               ),
-                                              child: const Text(
-                                                'Clear Filters',
+                                              child: Text(
+                                                AppLocalizations.of(context, 'clear_filters'),
                                               ),
                                             ),
                                             ElevatedButton(
@@ -321,7 +322,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                               style: theme.primaryButtonStyle(
                                                 context,
                                               ),
-                                              child: const Text('Apply'),
+                                              child: Text(AppLocalizations.of(context, 'apply')),
                                             ),
                                           ],
                                         ),
@@ -345,7 +346,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                       )
                       : error != null
                       ? Center(
-                        child: Text('Error: $error', style: theme.titleStyle),
+                        child: Text('${AppLocalizations.of(context, 'error_prefix')} $error', style: theme.titleStyle),
                       )
                       : filteredServices.isEmpty
                       ? Center(
@@ -359,7 +360,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'No service posts found',
+                              AppLocalizations.of(context, 'no_service_posts_found'),
                               style: theme.titleStyle,
                             ),
                             const SizedBox(height: 8),
@@ -370,7 +371,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                     '/service-post',
                                   ),
                               icon: const Icon(Icons.add),
-                              label: const Text('Create Service Post'),
+                              label: Text(AppLocalizations.of(context, 'create_service_post')),
                               style: theme.primaryButtonStyle(context),
                             ),
                           ],
@@ -384,10 +385,16 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                           itemBuilder: (context, index) {
                             final service = filteredServices[index];
                             final location = service['location'] ?? {};
-                            final category = service['category'] ?? {};
-                            final isCompanyPost =
-                                service['isCompanyPost'] ?? false;
+                            final isCompanyPost = service['isCompanyPost'] ?? false;
                             final companyId = service['companyId'];
+
+                            String categoryName = '';
+                            if (service['categoryPrices'] != null && (service['categoryPrices'] as List).isNotEmpty) {
+                              categoryName = service['categoryPrices'][0]['category']?['name'] ?? '';
+                            }
+                            if (categoryName.isEmpty) {
+                              categoryName = service['category']?['name'] ?? '';
+                            }
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 16),
@@ -405,18 +412,12 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                category['name'] ??
-                                                    'Untitled Service',
+                                                categoryName.isNotEmpty
+                                                    ? categoryName
+                                                    : AppLocalizations.of(context, 'untitled_service'),
                                                 style: theme
                                                     .headingStyle(context)
                                                     .copyWith(fontSize: 18),
-                                              ),
-                                              Text(
-                                                '₹${service['price']}',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.green,
-                                                ),
                                               ),
                                               // Display company badge if it's a company post
                                               if (isCompanyPost)
@@ -447,7 +448,7 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                                       ),
                                                       const SizedBox(width: 4),
                                                       Text(
-                                                        'Company Post',
+                                                        AppLocalizations.of(context, 'company_post'),
                                                         style: TextStyle(
                                                           fontSize: 12,
                                                           color:
@@ -490,11 +491,11 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                                 context: context,
                                                 builder:
                                                     (context) => AlertDialog(
-                                                      title: const Text(
-                                                        'Delete Service Post',
+                                                      title: Text(
+                                                        AppLocalizations.of(context, 'delete_service_post'),
                                                       ),
-                                                      content: const Text(
-                                                        'Are you sure you want to delete this service post?',
+                                                      content: Text(
+                                                        AppLocalizations.of(context, 'delete_service_post_desc'),
                                                       ),
                                                       actions: [
                                                         TextButton(
@@ -503,8 +504,8 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                                                   Navigator.pop(
                                                                     context,
                                                                   ),
-                                                          child: const Text(
-                                                            'Cancel',
+                                                          child: Text(
+                                                            AppLocalizations.of(context, 'cancel'),
                                                           ),
                                                         ),
                                                         TextButton(
@@ -521,8 +522,8 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                                                 foregroundColor:
                                                                     Colors.red,
                                                               ),
-                                                          child: const Text(
-                                                            'Delete',
+                                                          child: Text(
+                                                            AppLocalizations.of(context, 'delete'),
                                                           ),
                                                         ),
                                                       ],
@@ -532,28 +533,28 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                           },
                                           itemBuilder:
                                               (context) => [
-                                                const PopupMenuItem<String>(
+                                                PopupMenuItem<String>(
                                                   value: 'edit',
                                                   child: Row(
                                                     children: [
-                                                      Icon(Icons.edit),
-                                                      SizedBox(width: 8),
-                                                      Text('Edit'),
+                                                      const Icon(Icons.edit),
+                                                      const SizedBox(width: 8),
+                                                      Text(AppLocalizations.of(context, 'edit')),
                                                     ],
                                                   ),
                                                 ),
-                                                const PopupMenuItem<String>(
+                                                PopupMenuItem<String>(
                                                   value: 'delete',
                                                   child: Row(
                                                     children: [
-                                                      Icon(
+                                                      const Icon(
                                                         Icons.delete,
                                                         color: Colors.red,
                                                       ),
-                                                      SizedBox(width: 8),
+                                                      const SizedBox(width: 8),
                                                       Text(
-                                                        'Delete',
-                                                        style: TextStyle(
+                                                        AppLocalizations.of(context, 'delete'),
+                                                        style: const TextStyle(
                                                           color: Colors.red,
                                                         ),
                                                       ),
@@ -598,42 +599,26 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed: () {
-                                              // View details or statistics
-                                            },
-                                            icon: const Icon(Icons.visibility),
-                                            label: const Text('View Details'),
-                                            style: theme.secondaryButtonStyle(
-                                              context,
-                                            ),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          // Share service post
+                                        },
+                                        icon: const Icon(
+                                          Icons.share,
+                                          color: Colors.white,
+                                        ),
+                                        label: Text(
+                                          AppLocalizations.of(context, 'share'),
+                                          style: const TextStyle(
+                                            color: Colors.white,
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed: () {
-                                              // Share service post
-                                            },
-                                            icon: const Icon(
-                                              Icons.share,
-                                              color: Colors.white,
-                                            ),
-                                            label: const Text(
-                                              'Share',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            style: theme.primaryButtonStyle(
-                                              context,
-                                            ),
-                                          ),
+                                        style: theme.primaryButtonStyle(
+                                          context,
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ],
                                 ),

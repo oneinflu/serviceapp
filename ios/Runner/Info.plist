@@ -6,6 +6,8 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+    <string>https</string>
+    <string>http</string>
     <string>razorpay</string>
 	</array>
 	<key>CFBundleDisplayName</key>

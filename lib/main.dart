@@ -3,6 +3,7 @@ import 'package:app/screens/company_list_screen.dart';
 import 'package:app/screens/jobs/edit_job_post_screen.dart';
 import 'package:app/screens/services/edit_service_post_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:app/theme/app_theme.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/jobs/job_post_screen.dart';
+import 'screens/jobs/job_profile_screen.dart';
 import 'screens/jobs/job_search_screen.dart';
 import 'screens/services/my_service_posts_screen.dart'; // Add this import
 import 'screens/services/service_post_screen.dart';
@@ -26,6 +28,7 @@ import 'screens/services/service_search_screen.dart';
 import 'screens/settings/language_screen.dart'; // Add this import
 import 'screens/splash_screen.dart';
 import 'screens/subscription/my_subscriptions_screen.dart';
+import 'screens/subscription/payment_history_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +61,7 @@ class MyApp extends StatelessWidget {
     return Consumer<LocaleProvider>(
       builder: (context, localeProvider, child) {
         return MaterialApp(
+          debugShowCheckedModeBanner: false,
           locale: localeProvider.locale,
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
@@ -76,7 +80,7 @@ class MyApp extends StatelessWidget {
             Locale('or'),
           ],
           title: 'Serviceinfotek',
-          theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+          theme: AppTheme.lightTheme,
           initialRoute: '/',
           // Inside the routes map in MaterialApp:
           routes: {
@@ -111,6 +115,8 @@ class MyApp extends StatelessWidget {
             '/terms': (context) => const TermsConditionsScreen(),
             '/about': (context) => const AboutAppScreen(),
             '/my-subscriptions': (context) => const MySubscriptionsScreen(),
+            '/payment-history': (context) => const PaymentHistoryScreen(),
+            '/profile': (context) => const JobProfileScreen(),
           },
         );
       },

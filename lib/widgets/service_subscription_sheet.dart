@@ -124,6 +124,9 @@ class _ServiceSubscriptionSheetState extends State<ServiceSubscriptionSheet> {
         "razorpay_order_id": response.orderId,
         "razorpay_signature": response.signature,
         "subscriptionType": widget.serviceType.toUpperCase().replaceAll(
+          '-',
+          '_',
+        ).replaceAll(
           ' ',
           '_',
         ),
@@ -144,16 +147,18 @@ class _ServiceSubscriptionSheetState extends State<ServiceSubscriptionSheet> {
         Navigator.pop(context);
 
         // Navigate to congratulations screen
+        String nextRoute = '/${widget.serviceType.toLowerCase().replaceAll(' ', '-') }';
+        if (widget.serviceType == 'Service Post') {
+          nextRoute = '/service-post';
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder:
                 (context) => CongratulationsScreen(
                   serviceType: widget.serviceType,
-                  nextRoute:
-                      widget.isPremium
-                          ? '/service-post'
-                          : '/${widget.serviceType.toLowerCase().replaceAll(' ', '-')}',
+                  nextRoute: nextRoute,
                 ),
           ),
         );
@@ -200,6 +205,9 @@ class _ServiceSubscriptionSheetState extends State<ServiceSubscriptionSheet> {
 
       var data = json.encode({
         "subscriptionType": widget.serviceType.toUpperCase().replaceAll(
+          '-',
+          '_',
+        ).replaceAll(
           ' ',
           '_',
         ),

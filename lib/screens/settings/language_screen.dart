@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 
 class LanguageScreen extends StatelessWidget {
   const LanguageScreen({super.key});
@@ -12,7 +13,7 @@ class LanguageScreen extends StatelessWidget {
 
     return theme.buildPageBackground(
       child: Scaffold(
-        appBar: theme.buildAppBar(context, 'Change Language'),
+        appBar: theme.buildAppBar(context, AppLocalizations.of(context, 'change_language')),
         body: Column(
           children: [
             const SizedBox(height: ThemeStyle.defaultPadding),
@@ -33,9 +34,15 @@ class LanguageScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Text(
-                    'Select Your Language',
-                    style: theme.headingStyle(context),
+                  Expanded(
+                    child: Text(
+                      AppLocalizations.of(context, 'select_language'),
+                      style: const TextStyle(
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -134,8 +141,8 @@ class LanguageScreen extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(ThemeStyle.cardBorderRadius),
           ),
-          title: Text(name, style: theme.titleStyle),
-          subtitle: Text(englishName, style: theme.subtitleStyle),
+          title: Text(name, style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600, color: Colors.black87)),
+          subtitle: Text(englishName, style: const TextStyle(fontSize: 14.0, color: Colors.black54)),
           trailing: Container(
             width: 32,
             height: 32,

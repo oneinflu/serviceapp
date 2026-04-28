@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_drawer.dart';
+import '../l10n/app_localizations.dart';
 
 class CompanyListScreen extends StatefulWidget {
   const CompanyListScreen({Key? key}) : super(key: key);
@@ -78,14 +79,14 @@ class _CompanyListScreenState extends State<CompanyListScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Company deleted successfully')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'company_deleted_successfully'))),
         );
         fetchCompanies(); // Refresh the list
       }
     } catch (e) {
       print('Error deleting company: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting company: ${e.toString()}')),
+        SnackBar(content: Text('${AppLocalizations.of(context, 'error_deleting_company')} ${e.toString()}')),
       );
     }
   }
@@ -111,7 +112,7 @@ class _CompanyListScreenState extends State<CompanyListScreen> {
             isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : error != null
-                ? Center(child: Text('Error: $error'))
+                ? Center(child: Text('${AppLocalizations.of(context, 'error_prefix')} $error'))
                 : companies.isEmpty
                 ? Center(
                   child: Column(
@@ -123,7 +124,7 @@ class _CompanyListScreenState extends State<CompanyListScreen> {
                         color: Colors.grey,
                       ),
                       const SizedBox(height: 16),
-                      Text('No companies found', style: theme.titleStyle),
+                      Text(AppLocalizations.of(context, 'no_companies_found'), style: theme.titleStyle),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
                         onPressed:
@@ -241,7 +242,7 @@ class _CompanyListScreenState extends State<CompanyListScreen> {
                                                         () => Navigator.pop(
                                                           context,
                                                         ),
-                                                    child: const Text('Cancel'),
+                                                    child: Text(AppLocalizations.of(context, 'cancel')),
                                                   ),
                                                   TextButton(
                                                     onPressed: () {
@@ -254,7 +255,7 @@ class _CompanyListScreenState extends State<CompanyListScreen> {
                                                       foregroundColor:
                                                           Colors.red,
                                                     ),
-                                                    child: const Text('Delete'),
+                                                    child: Text(AppLocalizations.of(context, 'delete')),
                                                   ),
                                                 ],
                                               ),
@@ -263,28 +264,28 @@ class _CompanyListScreenState extends State<CompanyListScreen> {
                                     },
                                     itemBuilder:
                                         (context) => [
-                                          const PopupMenuItem<String>(
+                                          PopupMenuItem<String>(
                                             value: 'edit',
                                             child: Row(
                                               children: [
-                                                Icon(Icons.edit),
-                                                SizedBox(width: 8),
-                                                Text('Edit'),
+                                                const Icon(Icons.edit),
+                                                const SizedBox(width: 8),
+                                                Text(AppLocalizations.of(context, 'edit')),
                                               ],
                                             ),
                                           ),
-                                          const PopupMenuItem<String>(
+                                          PopupMenuItem<String>(
                                             value: 'delete',
                                             child: Row(
                                               children: [
-                                                Icon(
+                                                const Icon(
                                                   Icons.delete,
                                                   color: Colors.red,
                                                 ),
-                                                SizedBox(width: 8),
+                                                const SizedBox(width: 8),
                                                 Text(
-                                                  'Delete',
-                                                  style: TextStyle(
+                                                  AppLocalizations.of(context, 'delete'),
+                                                  style: const TextStyle(
                                                     color: Colors.red,
                                                   ),
                                                 ),

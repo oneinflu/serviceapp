@@ -46,20 +46,44 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(gradient: AppTheme.style.backgroundGradient),
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _scaleAnimation.value,
-                child: child,
-              );
-            },
-            child: Image.asset('assets/logo.jpeg', width: 200, height: 200),
+    final theme = AppTheme.style;
+    
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, ThemeStyle.backgroundColor],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: child,
+                  );
+                },
+                child: Image.asset(
+                  'assets/logo.jpeg',
+                  width: 120,
+                  height: 120,
+                ),
+              ),
+              const SizedBox(height: 40),
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(ThemeStyle.primaryColor),
+                strokeWidth: 3,
+              ),
+            ],
           ),
         ),
       ),

@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/location_details_form.dart';
 import '../../widgets/service_subscription_sheet.dart';
+import '../../l10n/app_localizations.dart';
 
 class ServicePostScreen extends StatefulWidget {
   const ServicePostScreen({Key? key}) : super(key: key);
@@ -24,6 +25,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
 
   // Changed to store category with price
   List<Map<String, dynamic>> _selectedCategories = [];
@@ -44,12 +46,87 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
   // Subscription data
   bool _isPaidSubscription = false;
 
+  // Existing service state
+  bool _isExistingService = false;
+  String? _existingServiceId;
+
   @override
   void initState() {
     super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.refreshUserData(); // Refresh first
     _fetchCategories();
     _fetchCompanyId();
     _fetchSubscriptionData();
+    // Proactively fetch user companies even if not selected yet
+    _fetchUserCompanies(force: true);
+    // Check for existing service
+    _fetchExistingService();
+  }
+
+  Future<void> _fetchExistingService() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      if (token == null) return;
+
+      var response = await Dio().get(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/services/my-services',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> services = response.data['data']['services'] ?? [];
+        if (services.isNotEmpty) {
+          final service = services[0]; // Take the only one
+          setState(() {
+            _isExistingService = true;
+            _existingServiceId = service['_id'];
+
+            // Populate fields
+            _isCompanyPost = service['isCompanyPost'] ?? false;
+            // Handle both object and ID formats
+            final dynamic companyData = service['company'];
+            if (companyData != null) {
+              if (companyData is Map) {
+                _selectedCompanyId = companyData['_id'];
+              } else {
+                _selectedCompanyId = companyData;
+              }
+            } else {
+              _selectedCompanyId = service['companyId'];
+            }
+            _companyId = _selectedCompanyId;
+
+            final loc = service['location'] ?? {};
+            _districtController.text = loc['district'] ?? '';
+            _stateController.text = loc['state'] ?? '';
+            _cityController.text = loc['city'] ?? '';
+            _pincodeController.text = loc['pincode'] ?? '';
+            _countryController.text = loc['country'] ?? 'INDIA';
+            _addressController.text = loc['address'] ?? '';
+
+            if (service['categoryPrices'] != null) {
+              _selectedCategories =
+                  (service['categoryPrices'] as List).map((cp) {
+                    return {
+                      'id': cp['category']['_id'],
+                      'name': cp['category']['name'],
+                      'price': double.tryParse(cp['price']?.toString() ?? '0') ?? 0,
+                    };
+                  }).toList();
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching existing service: $e');
+    }
   }
 
   // Replace the existing _fetchCompanyId method with this one
@@ -60,14 +137,36 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
     if (userData != null && userData['company'] != null) {
       setState(() {
         _companyId = userData['company']['_id'];
-        _selectedCompanyId = userData['company']['_id'];  // Add this line
+        _selectedCompanyId = userData['company']['_id'];
+        if (_isCompanyPost) {
+          _autofillCompanyLocation();
+        }
+      });
+    }
+  }
+
+  void _autofillCompanyLocation() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userData = authProvider.userData;
+
+    if (userData != null &&
+        userData['company'] != null &&
+        userData['company']['location'] != null) {
+      final loc = userData['company']['location'];
+      setState(() {
+        _districtController.text = loc['district'] ?? '';
+        _stateController.text = loc['state'] ?? '';
+        _cityController.text = loc['city'] ?? '';
+        _pincodeController.text = loc['pincode'] ?? '';
+        _countryController.text = loc['country'] ?? 'INDIA';
+        _addressController.text = loc['address'] ?? '';
       });
     }
   }
 
   // Add this new method to fetch user's companies
-  Future<void> _fetchUserCompanies() async {
-    if (!_isCompanyPost) return;
+  Future<void> _fetchUserCompanies({bool force = false}) async {
+    if (!_isCompanyPost && !force) return;
 
     try {
       setState(() {
@@ -186,14 +285,14 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Company Profile Required'),
-            content: const Text(
-              'You need to set up your company profile before posting a service as a company.\n\nWould you like to add your company information now?',
+            title: Text(AppLocalizations.of(context, 'company_profile_required')),
+            content: Text(
+              AppLocalizations.of(context, 'company_profile_required_desc'),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(context, 'cancel')),
               ),
               TextButton(
                 onPressed: () {
@@ -213,7 +312,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).primaryColor,
                 ),
-                child: const Text('Add Company Info'),
+                child: Text(AppLocalizations.of(context, 'add_company_info')),
               ),
             ],
           ),
@@ -226,31 +325,18 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
 
     if (_selectedCategories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one category.')),
+        SnackBar(content: Text(AppLocalizations.of(context, 'please_select_at_least_one_category'))),
       );
       return;
     }
 
-    // Check if all categories have prices
-    bool allCategoriesHavePrices = _selectedCategories.every(
-      (cat) =>
-          cat.containsKey('price') && cat['price'] != null && cat['price'] > 0,
-    );
 
-    if (!allCategoriesHavePrices) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a price for each category.'),
-        ),
-      );
-      return;
-    }
 
     // Check if company post but no company info
     if (_isCompanyPost) {
       if (_selectedCompanyId == null || _selectedCompanyId!.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please set up your company profile first')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'please_set_up_company_profile'))),
         );
         return;
       }
@@ -261,7 +347,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
 
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to post a service.')),
+        SnackBar(content: Text(AppLocalizations.of(context, 'please_log_in_post_service'))),
       );
       return;
     }
@@ -280,6 +366,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
         "city": _cityController.text,
         "pincode": _pincodeController.text,
         "country": _countryController.text,
+        "address": _addressController.text,
       },
       "isCompanyPost": _isCompanyPost,
     };
@@ -306,7 +393,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Service posted successfully!')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'service_posted_successfully'))),
         );
         // Clear form fields
         _formKey.currentState?.reset();
@@ -317,13 +404,13 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
         Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: ${response.statusMessage}')),
+          SnackBar(content: Text('${AppLocalizations.of(context, 'failed_prefix')} ${response.statusMessage}')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context, 'error_prefix')} $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -399,7 +486,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
           icon: const Icon(Icons.arrow_back, color: ThemeStyle.iconColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text('Post a Service', style: theme.appBarTitleStyle(context)),
+        title: Text(AppLocalizations.of(context, 'post_a_service'), style: theme.appBarTitleStyle(context)),
         centerTitle: true,
       ),
       body: Container(
@@ -418,19 +505,22 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Company Post', style: theme.titleStyle),
+                      Text(AppLocalizations.of(context, 'company_post'), style: theme.titleStyle),
                       const SizedBox(height: 8),
                       Text(
-                        'Is this a company service posting?',
+                        AppLocalizations.of(context, 'is_this_company_service'),
                         style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                       const SizedBox(height: 16),
                       SwitchListTile(
-                        title: const Text('Post as Company'),
+                        title: Text(AppLocalizations.of(context, 'post_as_company')),
                         value: _isCompanyPost,
                         onChanged: (value) {
                           setState(() {
                             _isCompanyPost = value;
+                            if (value) {
+                              _autofillCompanyLocation();
+                            }
                           });
                         },
                         activeColor: Theme.of(context).primaryColor,
@@ -464,7 +554,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'Posting as ${userData!['company']['name']}',
+                                        '${AppLocalizations.of(context, 'posting_as')}${userData!['company']['name']}',
                                         style: const TextStyle(color: Colors.green),
                                       ),
                                     ),
@@ -491,7 +581,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'You need to set up your company profile first',
+                                          AppLocalizations.of(context, 'please_set_up_company_profile'),
                                         style: const TextStyle(color: Colors.orange),
                                       ),
                                     ),
@@ -499,7 +589,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                                       onPressed: () {
                                         Navigator.pushNamed(context, '/company-info');
                                       },
-                                      child: const Text('Add Company'),
+                                        child: Text(AppLocalizations.of(context, 'add_company')),
                                     ),
                                   ],
                                 ),
@@ -517,12 +607,12 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Categories', style: theme.titleStyle),
+                      Text(AppLocalizations.of(context, 'categories'), style: theme.titleStyle),
                       const SizedBox(height: 4),
                       Text(
                         isPaidSubscription
-                            ? 'Add up to 10 categories for your service'
-                            : 'Add up to 1 category for your service (upgrade for more)',
+                            ? AppLocalizations.of(context, 'add_up_to_10_categories')
+                            : AppLocalizations.of(context, 'add_up_to_1_category'),
                         style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                       const SizedBox(height: 16),
@@ -533,10 +623,10 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                               textFieldConfiguration: TextFieldConfiguration(
                                 controller: _categoryController,
                                 decoration: theme.searchDropdownDecoration(
-                                  labelText: 'Search and Select Category',
+                                  labelText: AppLocalizations.of(context, 'search_select_category'),
                                   prefixIcon: Icons.search,
                                   context: context,
-                                  hintText: 'Select Category',
+                                  hintText: AppLocalizations.of(context, 'select_category'),
                                 ),
                               ),
                               displayAllSuggestionWhenTap: true,
@@ -594,7 +684,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'Maximum $maxCategories categories allowed',
+                                          '${AppLocalizations.of(context, 'max_categories_allowed')}$maxCategories',
                                         ),
                                       ),
                                     );
@@ -641,7 +731,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'Maximum $maxCategories categories allowed',
+                                          '${AppLocalizations.of(context, 'max_categories_allowed')}$maxCategories',
                                         ),
                                       ),
                                     );
@@ -666,8 +756,8 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                               // Change button text based on user status and selection
                               (!isPaidSubscription &&
                                       _selectedCategories.length >= 1)
-                                  ? 'Upgrade'
-                                  : 'Add',
+                                  ? AppLocalizations.of(context, 'upgrade')
+                                  : AppLocalizations.of(context, 'add'),
                               style: const TextStyle(color: Colors.white),
                             ),
                           ),
@@ -675,56 +765,26 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                       ),
                       if (_selectedCategories.isNotEmpty)
                         const SizedBox(height: 16),
-                      // Display selected categories with price inputs
-                      ..._selectedCategories.map((category) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Chip(
-                                  label: Text(category['name']),
-                                  deleteIcon: const Icon(Icons.close, size: 18),
-                                  onDeleted: () => _removeCategory(category),
-                                  backgroundColor: Colors.grey[200],
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue:
-                                      category['price'] > 0
-                                          ? category['price'].toString()
-                                          : '',
-                                  keyboardType: TextInputType.number,
-                                  decoration: theme.inputDecoration(
-                                    labelText: 'Price',
-                                    prefixIcon: Icons.currency_rupee,
-                                    context: context,
-                                  ),
-                                  validator:
-                                      (value) =>
-                                          value == null || value.isEmpty
-                                              ? 'Required'
-                                              : null,
-                                  onChanged:
-                                      (value) => _updateCategoryPrice(
-                                        category['id'],
-                                        value,
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                      // Display selected categories
+                      Wrap(
+                        spacing: 8.0,
+                        runSpacing: 8.0,
+                        children: _selectedCategories.map((category) {
+                          return Chip(
+                            label: Text(category['name']),
+                            deleteIcon: const Icon(Icons.close, size: 18),
+                            onDeleted: () => _removeCategory(category),
+                            backgroundColor: Colors.grey[200],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          );
+                        }).toList(),
+                      ),
                       if (_selectedCategories.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
-                          '${_selectedCategories.length}/$maxCategories categories',
+                          '${_selectedCategories.length}/$maxCategories ${AppLocalizations.of(context, 'categories').toLowerCase()}',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -737,13 +797,36 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                 const SizedBox(height: 24),
 
                 // Location Section
-                LocationDetailsForm(
-                  districtController: _districtController,
-                  stateController: _stateController,
-                  cityController: _cityController,
-                  pincodeController: _pincodeController,
-                  countryController: _countryController,
-                ),
+                if (!_isCompanyPost) ...[
+                  LocationDetailsForm(
+                    districtController: _districtController,
+                    stateController: _stateController,
+                    cityController: _cityController,
+                    pincodeController: _pincodeController,
+                    countryController: _countryController,
+                    addressController: _addressController,
+                  ),
+                ] else ...[
+                  theme.buildCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(AppLocalizations.of(context, 'location_company'), style: theme.titleStyle),
+                            const Icon(Icons.check_circle, color: Colors.green),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_cityController.text}, ${_stateController.text}\n${_addressController.text}',
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 32),
 
@@ -754,7 +837,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                   child:
                       _isLoading
                           ? theme.loadingIndicator()
-                          : Text('Post Service', style: theme.buttonTextStyle),
+                          : Text(AppLocalizations.of(context, 'post_service'), style: theme.buttonTextStyle),
                 ),
               ],
             ),

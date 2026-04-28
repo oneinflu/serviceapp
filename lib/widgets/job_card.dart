@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class JobCard extends StatelessWidget {
   final String jobTitle;
@@ -18,28 +19,100 @@ class JobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              jobTitle,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(organizationName),
-            const SizedBox(height: 8),
-            Text('Last Date: ${lastDateToApply.toString().split(' ')[0]}'),
-            const SizedBox(height: 8),
-            Text('Type: $jobType'),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: () {}, child: const Text('Apply Now')),
-          ],
-        ),
+    final theme = AppTheme.style;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: theme.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      jobTitle,
+                      style: theme.titleStyle.copyWith(fontSize: 18),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.account_balance_rounded, size: 14, color: Colors.grey.shade500),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            organizationName,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: ThemeStyle.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  jobType,
+                  style: const TextStyle(
+                    color: ThemeStyle.primaryColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildInfoItem(Icons.calendar_today_rounded, 'Last Date', lastDateToApply.toString().split(' ')[0]),
+            ],
+          ),
+          const SizedBox(height: 20),
+          theme.buildPrimaryButton(
+            text: 'Apply Now',
+            onPressed: () {
+              // Handle apply link
+            },
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildInfoItem(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: ThemeStyle.textSecondary),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: const TextStyle(color: ThemeStyle.textSecondary, fontSize: 13),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: ThemeStyle.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }

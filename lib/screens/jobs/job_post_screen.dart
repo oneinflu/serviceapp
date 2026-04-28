@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/service_subscription_sheet.dart';
+import '../../l10n/app_localizations.dart';
 
 class JobPostScreen extends StatefulWidget {
   const JobPostScreen({Key? key}) : super(key: key);
@@ -24,6 +25,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
 
   List<Map<String, dynamic>> _selectedCategories = [];
   List<Map<String, dynamic>> _categories = [];
@@ -36,8 +38,13 @@ class _JobPostScreenState extends State<JobPostScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.refreshUserData();
     _fetchCategories();
-    // You would also fetch company ID if needed
     _fetchCompanyId();
   }
 
@@ -50,6 +57,28 @@ class _JobPostScreenState extends State<JobPostScreen> {
     if (userData != null && userData['company'] != null) {
       setState(() {
         _companyId = userData['company']['_id'];
+        if (_isCompanyPost) {
+          _autofillCompanyLocation();
+        }
+      });
+    }
+  }
+
+  void _autofillCompanyLocation() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userData = authProvider.userData;
+
+    if (userData != null &&
+        userData['company'] != null &&
+        userData['company']['location'] != null) {
+      final loc = userData['company']['location'];
+      setState(() {
+        _districtController.text = loc['district'] ?? '';
+        _stateController.text = loc['state'] ?? '';
+        _cityController.text = loc['city'] ?? '';
+        _pincodeController.text = loc['pincode'] ?? '';
+        _countryController.text = loc['country'] ?? 'INDIA';
+        _addressController.text = loc['address'] ?? '';
       });
     }
   }
@@ -115,7 +144,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
 
     if (_selectedCategories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one category')),
+        SnackBar(content: Text(AppLocalizations.of(context, 'select_category_hint'))),
       );
       return;
     }
@@ -132,52 +161,24 @@ class _JobPostScreenState extends State<JobPostScreen> {
           userData['company'].isNotEmpty;
 
       if (!hasCompanyInfo) {
-        // Show dialog to add company info
-        final result = await showDialog<bool>(
-          context: context,
-          builder:
-              (ctx) => AlertDialog(
-                title: const Text('Company Information Required'),
-                content: const Text(
-                  'You need to add company information before posting a company job.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Add Company Info'),
-                  ),
-                ],
-              ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context, 'setup_company_profile_first')),
+            action: SnackBarAction(
+              label: AppLocalizations.of(context, 'add'),
+              onPressed: () => Navigator.pushNamed(context, '/company-info'),
+            ),
+          ),
         );
-
-        if (result == true) {
-          // Navigate to company info page
-          final infoResult = await Navigator.pushNamed(
-            context,
-            '/company-info',
-          );
-
-          // If company info was added successfully, refresh user data and retry
-          if (infoResult == true && mounted) {
-            await authProvider.refreshUserData();
-            _postJob(); // Retry posting the job
-          }
-          return;
-        } else {
-          return; // User cancelled
-        }
+        return;
       }
     }
 
     // Check if company post is selected but no company ID is available
     if (_isCompanyPost && (_companyId == null || _companyId!.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Company ID is required for company posts'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context, 'company_id_required')),
         ),
       );
       return;
@@ -185,7 +186,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
 
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to post a Job')),
+        SnackBar(content: Text(AppLocalizations.of(context, 'login_to_post'))),
       );
       return;
     }
@@ -201,6 +202,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
         "city": _cityController.text,
         "pincode": _pincodeController.text,
         "country": _countryController.text,
+        "address": _addressController.text,
       },
       "isCompanyPost": _isCompanyPost,
     };
@@ -225,7 +227,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Job posted successfully!')),
+          SnackBar(content: Text(AppLocalizations.of(context, 'job_posted_success'))),
         );
         _formKey.currentState?.reset();
         setState(() {
@@ -236,13 +238,13 @@ class _JobPostScreenState extends State<JobPostScreen> {
         Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: ${response.statusMessage}')),
+          SnackBar(content: Text('${AppLocalizations.of(context, 'failed_prefix')}${response.statusMessage}')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context, 'error_prefix')}$e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -265,7 +267,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
           icon: const Icon(Icons.arrow_back, color: ThemeStyle.iconColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text('Post a Job', style: theme.appBarTitleStyle(context)),
+        title: Text(AppLocalizations.of(context, 'post_a_job'), style: theme.appBarTitleStyle(context)),
         centerTitle: true,
       ),
       body: Container(
@@ -284,10 +286,10 @@ class _JobPostScreenState extends State<JobPostScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Categories', style: theme.titleStyle),
+                      Text(AppLocalizations.of(context, 'categories_title'), style: theme.titleStyle),
                       const SizedBox(height: 4),
                       Text(
-                        'Add up to 10 categories for your job',
+                        AppLocalizations.of(context, 'categories_desc'),
                         style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                       const SizedBox(height: 16),
@@ -298,10 +300,10 @@ class _JobPostScreenState extends State<JobPostScreen> {
                               textFieldConfiguration: TextFieldConfiguration(
                                 controller: _categoryController,
                                 decoration: theme.searchDropdownDecoration(
-                                  labelText: 'Search and Select Category',
+                                  labelText: AppLocalizations.of(context, 'search_select_category'),
                                   prefixIcon: Icons.search,
                                   context: context,
-                                  hintText: 'Select Category',
+                                  hintText: AppLocalizations.of(context, 'select_category'),
                                 ),
                               ),
                               displayAllSuggestionWhenTap: true,
@@ -350,7 +352,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'Maximum $maxCategories categories allowed',
+                                          AppLocalizations.of(context, 'max_categories_allowed'),
                                         ),
                                       ),
                                     );
@@ -408,9 +410,9 @@ class _JobPostScreenState extends State<JobPostScreen> {
                                     const Size(0, 0),
                                   ),
                                 ),
-                            child: const Text(
-                              'Add',
-                              style: TextStyle(color: Colors.white),
+                            child: Text(
+                              AppLocalizations.of(context, 'add'),
+                              style: const TextStyle(color: Colors.white),
                             ),
                           ),
                         ],
@@ -436,7 +438,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
                       if (_selectedCategories.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
-                          '${_selectedCategories.length}/$maxCategories categories',
+                          '${_selectedCategories.length}/$maxCategories ${AppLocalizations.of(context, 'categories_count')}',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -453,19 +455,22 @@ class _JobPostScreenState extends State<JobPostScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Company Post', style: theme.titleStyle),
+                      Text(AppLocalizations.of(context, 'company_post'), style: theme.titleStyle),
                       const SizedBox(height: 8),
                       Text(
-                        'Is this a company job posting?',
+                        AppLocalizations.of(context, 'is_company_post'),
                         style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                       const SizedBox(height: 16),
                       SwitchListTile(
-                        title: const Text('Post as Company'),
+                        title: Text(AppLocalizations.of(context, 'post_as_company')),
                         value: _isCompanyPost,
                         onChanged: (value) {
                           setState(() {
                             _isCompanyPost = value;
+                            if (value) {
+                              _autofillCompanyLocation();
+                            }
                           });
                         },
                         activeColor: Theme.of(context).primaryColor,
@@ -499,7 +504,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'Posting as ${userData!['company']['name']}',
+                                        '${AppLocalizations.of(context, 'posting_as')} ${userData!['company']['name']}',
                                         style: const TextStyle(color: Colors.green),
                                       ),
                                     ),
@@ -526,7 +531,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'You need to set up your company profile first',
+                                        AppLocalizations.of(context, 'setup_company_profile_first'),
                                         style: const TextStyle(color: Colors.orange),
                                       ),
                                     ),
@@ -534,7 +539,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
                                       onPressed: () {
                                         Navigator.pushNamed(context, '/company-info');
                                       },
-                                      child: const Text('Add Company'),
+                                      child: Text(AppLocalizations.of(context, 'add_company')),
                                     ),
                                   ],
                                 ),
@@ -548,13 +553,36 @@ class _JobPostScreenState extends State<JobPostScreen> {
                 const SizedBox(height: 24),
 
                 // Location Section
-                LocationDetailsForm(
-                  districtController: _districtController,
-                  stateController: _stateController,
-                  cityController: _cityController,
-                  pincodeController: _pincodeController,
-                  countryController: _countryController,
-                ),
+                if (!_isCompanyPost) ...[
+                  LocationDetailsForm(
+                    districtController: _districtController,
+                    stateController: _stateController,
+                    cityController: _cityController,
+                    pincodeController: _pincodeController,
+                    countryController: _countryController,
+                    addressController: _addressController,
+                  ),
+                ] else ...[
+                  theme.buildCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(AppLocalizations.of(context, 'location_company'), style: theme.titleStyle),
+                            const Icon(Icons.check_circle, color: Colors.green),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_cityController.text}, ${_stateController.text}\n${_addressController.text}',
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 32),
 
@@ -565,7 +593,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
                   child:
                       _isLoading
                           ? theme.loadingIndicator()
-                          : Text('Post Job', style: theme.buttonTextStyle),
+                          : Text(AppLocalizations.of(context, 'post_job_button'), style: theme.buttonTextStyle),
                 ),
               ],
             ),

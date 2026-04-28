@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
+import '../theme/app_theme.dart';
 import 'job_card.dart';
 
 class GovernmentJobsSection extends StatefulWidget {
@@ -62,19 +63,41 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
 
   Widget _buildJobTypePill(String label) {
     final bool isSelected = selectedJobType == label;
-    return Container(
-      margin: const EdgeInsets.only(right: 8.0),
-      child: FilterChip(
-        selected: isSelected,
-        label: Text(label),
-        onSelected: (bool selected) {
-          if (selected) {
-            setState(() {
-              selectedJobType = label;
-              print('Selected job type: $label'); // Debug print
-            });
-          }
-        },
+    final theme = AppTheme.style;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedJobType = label;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(right: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? ThemeStyle.primaryColor : Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: isSelected ? ThemeStyle.primaryColor : Colors.grey.shade200,
+            width: 1.5,
+          ),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: ThemeStyle.primaryColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            )
+          ] : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : ThemeStyle.textSecondary,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
       ),
     );
   }
@@ -82,36 +105,49 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
   @override
   Widget build(BuildContext context) {
     final filteredJobs = getFilteredJobs();
+    final theme = AppTheme.style;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
-            'Government Jobs',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-        ),
+        theme.buildSectionHeader('Jobs in India'),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
           child: Row(
             children: jobTypes.map((type) => _buildJobTypePill(type)).toList(),
           ),
         ),
+        const SizedBox(height: 12),
         if (isLoading)
-          const Center(child: CircularProgressIndicator())
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(40.0),
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(ThemeStyle.primaryColor),
+              ),
+            ),
+          )
         else if (filteredJobs.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(child: Text('No jobs found for $selectedJobType')),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(40.0),
+            child: Column(
+              children: [
+                Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade300),
+                const SizedBox(height: 16),
+                Text(
+                  'No jobs found for $selectedJobType',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           )
         else
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
             itemCount: filteredJobs.length,
             itemBuilder:
                 (context, index) => JobCard(

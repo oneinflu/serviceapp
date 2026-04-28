@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_drawer.dart';  // Add this import
+import 'wallet_dashboard_screen.dart';
+import '../l10n/app_localizations.dart';
 
 class ReferEarnScreen extends StatelessWidget {
   const ReferEarnScreen({super.key});
@@ -24,7 +26,7 @@ class ReferEarnScreen extends StatelessWidget {
 
     return theme.buildPageBackground(
       child: Scaffold(
-        appBar: theme.buildAppBar(context, 'Refer & Earn'),
+        appBar: theme.buildAppBar(context, AppLocalizations.of(context, 'refer_earn')),
         drawer: const AppDrawer(),  // Add this line
         body: SingleChildScrollView(
           child: Padding(
@@ -46,13 +48,13 @@ class ReferEarnScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Invite Friends & Earn Rewards',
+                        AppLocalizations.of(context, 'refer_friends_earn'),
                         style: theme.headingStyle(context),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Share your referral code with friends and earn exciting rewards!',
+                        AppLocalizations.of(context, 'share_code_get_rewarded'),
                         style: theme.subtitleStyle,
                         textAlign: TextAlign.center,
                       ),
@@ -64,7 +66,7 @@ class ReferEarnScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        'Your Referral Code',
+                        AppLocalizations.of(context, 'your_referral_code'),
                         style: theme.titleStyle,
                       ),
                       const SizedBox(height: 16),
@@ -95,8 +97,31 @@ class ReferEarnScreen extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: () => _shareApp(referralCode),
                   icon: const Icon(Icons.share),
-                  label: Text('Share with Friends', style: theme.buttonTextStyle),
+                  label: Text(AppLocalizations.of(context, 'share_with_friends'), style: theme.buttonTextStyle),
                   style: theme.primaryButtonStyle(context),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const WalletDashboardScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.account_balance_wallet),
+                  label: Text(
+                    AppLocalizations.of(context, 'go_to_wallet_dashboard'), 
+                    style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: BorderSide(color: Theme.of(context).primaryColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 theme.buildCard(
@@ -104,7 +129,7 @@ class ReferEarnScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'How it works',
+                        AppLocalizations.of(context, 'how_it_works'),
                         style: theme.headingStyle(context).copyWith(fontSize: 20),
                       ),
                       const SizedBox(height: 16),
@@ -113,17 +138,17 @@ class ReferEarnScreen extends StatelessWidget {
                           backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                           child: Text('1', style: TextStyle(color: Theme.of(context).primaryColor)),
                         ),
-                        title: Text('Share your referral code', style: theme.titleStyle),
-                        subtitle: Text('Send your unique code to friends', style: theme.subtitleStyle),
+                        title: Text(AppLocalizations.of(context, 'share_code'), style: theme.titleStyle),
+                        subtitle: Text(AppLocalizations.of(context, 'share_code_desc'), style: theme.subtitleStyle),
                       ),
                       ListTile(
                         leading: CircleAvatar(
                           backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                           child: Text('2', style: TextStyle(color: Theme.of(context).primaryColor)),
                         ),
-                        title: Text('Friend signs up', style: theme.titleStyle),
+                        title: Text(AppLocalizations.of(context, 'friends_join'), style: theme.titleStyle),
                         subtitle: Text(
-                          'Your friend creates an account using your code',
+                          AppLocalizations.of(context, 'friends_join_desc'),
                           style: theme.subtitleStyle,
                         ),
                       ),
@@ -132,9 +157,9 @@ class ReferEarnScreen extends StatelessWidget {
                           backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                           child: Text('3', style: TextStyle(color: Theme.of(context).primaryColor)),
                         ),
-                        title: Text('Both get rewards', style: theme.titleStyle),
+                        title: Text(AppLocalizations.of(context, 'earn_rewards'), style: theme.titleStyle),
                         subtitle: Text(
-                          'You and your friend receive special benefits',
+                          AppLocalizations.of(context, 'earn_rewards_desc'),
                           style: theme.subtitleStyle,
                         ),
                       ),
