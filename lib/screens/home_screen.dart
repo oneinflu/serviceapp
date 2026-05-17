@@ -165,43 +165,69 @@ class HomeScreen extends StatelessWidget {
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
 
     return Container(
-      decoration: theme.cardDecoration,
+      decoration: isDesktop
+          ? theme.cardDecoration
+          : BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ThemeStyle.cardBorder, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: ThemeStyle.primaryColor.withOpacity(0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _handleCardTap(context, route.replaceAll('/', '')),
-          borderRadius: BorderRadius.circular(ThemeStyle.cardBorderRadius),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(isDesktop ? 24 : 20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).primaryColor.withOpacity(0.15),
-                      Theme.of(context).primaryColor.withOpacity(0.05),
-                    ],
+          borderRadius: BorderRadius.circular(isDesktop ? ThemeStyle.cardBorderRadius : 16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isDesktop ? 18 : 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Theme.of(context).primaryColor.withOpacity(0.15),
+                        Theme.of(context).primaryColor.withOpacity(0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(isDesktop ? 20 : 14),
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  child: Icon(
+                    icon,
+                    size: isDesktop ? 32 : 24,
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
-                child: Icon(
-                  icon,
-                  size: isDesktop ? 40 : 32,
-                  color: Theme.of(context).primaryColor,
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: isDesktop ? 36 : 28,
+                  child: Center(
+                    child: Text(
+                      title.replaceAll(' ', '\n'),
+                      style: theme.titleStyle.copyWith(
+                        fontSize: isDesktop ? 14 : 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                        height: 1.1,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: theme.titleStyle.copyWith(
-                  fontSize: isDesktop ? 18 : 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -313,10 +339,10 @@ class HomeScreen extends StatelessWidget {
                 child: GridView.count(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: isDesktop ? 4 : 2,
-                  crossAxisSpacing: 20,
-                  mainAxisSpacing: 20,
-                  childAspectRatio: isDesktop ? 1.0 : 0.95,
+                  crossAxisCount: 4,
+                  crossAxisSpacing: isDesktop ? 20 : 10,
+                  mainAxisSpacing: isDesktop ? 20 : 10,
+                  childAspectRatio: isDesktop ? 1.0 : 0.72,
                   children: [
                     _buildCard(
                       context,

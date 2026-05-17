@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 
 class JobCard extends StatelessWidget {
@@ -85,9 +86,18 @@ class JobCard extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           theme.buildPrimaryButton(
-            text: 'Apply Now',
-            onPressed: () {
-              // Handle apply link
+            text: applyLink.startsWith('tel:') ? 'Call Now' : 'Apply Now',
+            onPressed: () async {
+              if (applyLink.isNotEmpty) {
+                final Uri uri = Uri.parse(applyLink);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                } else {
+                  if (applyLink.startsWith('tel:')) {
+                    await launchUrl(uri);
+                  }
+                }
+              }
             },
           ),
         ],

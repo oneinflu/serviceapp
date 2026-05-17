@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../theme/app_theme.dart';
+import '../providers/auth_provider.dart';
 import 'job_card.dart';
 
 class GovernmentJobsSection extends StatefulWidget {
@@ -15,11 +17,12 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
   final List<String> jobTypes = [
     'Govt Jobs',
     'Semi Govt Jobs',
-    'PSU Jobs',
-    'MSME Jobs',
+    'Private Jobs',
+    'Individual Jobs',
   ];
   String selectedJobType = 'Govt Jobs';
-  List<dynamic> jobs = [];
+  List<dynamic> govtJobs = [];
+  List<dynamic> userJobs = [];
   bool isLoading = true;
 
   @override
@@ -31,16 +34,45 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
   Future<void> fetchJobs() async {
     try {
       var dio = Dio();
-      var response = await dio.get(
+      
+      // Fetch Government Jobs
+      var responseGovt = await dio.get(
         'https://servicebackendnew-e2d8v.ondigitalocean.app/api/government-jobs',
       );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          jobs = response.data['data']['governmentJobs'];
-          isLoading = false;
-        });
+      
+      List<dynamic> fetchedGovt = [];
+      if (responseGovt.statusCode == 200) {
+        fetchedGovt = responseGovt.data['data']['governmentJobs'] ?? [];
       }
+
+      // Fetch User-posted Jobs
+      List<dynamic> fetchedUser = [];
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final token = authProvider.token;
+        
+        Map<String, dynamic> headers = {};
+        if (token != null) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+        
+        var responseUser = await dio.get(
+          'https://servicebackendnew-e2d8v.ondigitalocean.app/api/jobs',
+          options: Options(headers: headers),
+        );
+        
+        if (responseUser.statusCode == 200) {
+          fetchedUser = responseUser.data['data']['jobs'] ?? [];
+        }
+      } catch (e) {
+        print('Error fetching user jobs: $e');
+      }
+
+      setState(() {
+        govtJobs = fetchedGovt;
+        userJobs = fetchedUser;
+        isLoading = false;
+      });
     } catch (e) {
       setState(() {
         isLoading = false;
@@ -50,20 +82,24 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
   }
 
   List<dynamic> getFilteredJobs() {
-    // Debug print to check job types
-    print('Selected type: $selectedJobType');
-    print('Available jobs: ${jobs.map((job) => job['jobType']).toList()}');
-
-    return jobs
-        .where(
-          (job) => job['jobType'].toString().trim() == selectedJobType.trim(),
-        )
-        .toList();
+    if (selectedJobType == 'Govt Jobs' || selectedJobType == 'Semi Govt Jobs') {
+      return govtJobs
+          .where((job) => job['jobType'].toString().trim() == selectedJobType.trim())
+          .toList();
+    } else if (selectedJobType == 'Private Jobs') {
+      return userJobs
+          .where((job) => job['company'] != null)
+          .toList();
+    } else if (selectedJobType == 'Individual Jobs') {
+      return userJobs
+          .where((job) => job['company'] == null)
+          .toList();
+    }
+    return [];
   }
 
   Widget _buildJobTypePill(String label) {
     final bool isSelected = selectedJobType == label;
-    final theme = AppTheme.style;
     
     return GestureDetector(
       onTap: () {
@@ -149,16 +185,55 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
             physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
             itemCount: filteredJobs.length,
-            itemBuilder:
-                (context, index) => JobCard(
-                  jobTitle: filteredJobs[index]['jobTitle'],
-                  organizationName: filteredJobs[index]['organizationName'],
-                  lastDateToApply: DateTime.parse(
-                    filteredJobs[index]['lastDateToApply'],
-                  ),
-                  applyLink: filteredJobs[index]['applyLink'],
-                  jobType: filteredJobs[index]['jobType'],
-                ),
+            itemBuilder: (context, index) {
+              final job = filteredJobs[index];
+              String title = '';
+              String org = '';
+              DateTime date = DateTime.now();
+              String link = '';
+              String type = '';
+
+              if (selectedJobType == 'Govt Jobs' || selectedJobType == 'Semi Govt Jobs') {
+                title = job['jobTitle'] ?? '';
+                org = job['organizationName'] ?? '';
+                date = job['lastDateToApply'] != null 
+                    ? (DateTime.tryParse(job['lastDateToApply']) ?? DateTime.now())
+                    : DateTime.now();
+                link = job['applyLink'] ?? '';
+                type = job['jobType'] ?? '';
+              } else {
+                final categories = job['categories'] as List? ?? [];
+                title = categories.isNotEmpty ? (categories[0]['name'] ?? 'Job Opportunity') : 'Job Opportunity';
+                
+                final userObj = job['user'];
+                final userName = (userObj is Map) ? (userObj['name'] ?? 'Individual Post') : 'Individual Post';
+                
+                final company = job['company'];
+                if (company is Map && company['name'] != null) {
+                  org = company['name'];
+                } else {
+                  org = userName;
+                }
+
+                date = job['updatedAt'] != null 
+                    ? (DateTime.tryParse(job['updatedAt']) ?? DateTime.now()) 
+                    : (job['createdAt'] != null 
+                        ? (DateTime.tryParse(job['createdAt']) ?? DateTime.now()) 
+                        : DateTime.now());
+                
+                final phone = (userObj is Map) ? userObj['phone'] : null;
+                link = phone != null ? 'tel:$phone' : '';
+                type = selectedJobType;
+              }
+
+              return JobCard(
+                jobTitle: title,
+                organizationName: org,
+                lastDateToApply: date,
+                applyLink: link,
+                jobType: type,
+              );
+            },
           ),
       ],
     );

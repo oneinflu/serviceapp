@@ -72,10 +72,31 @@ class _SplashScreenState extends State<SplashScreen>
                     child: child,
                   );
                 },
-                child: Image.asset(
-                  'assets/logo.jpeg',
-                  width: 120,
-                  height: 120,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: ThemeStyle.primaryColor.withOpacity(0.15),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: ThemeStyle.primaryColor.withOpacity(0.1),
+                        blurRadius: 30,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: Image.asset(
+                      'assets/logo.jpeg',
+                      width: 180,
+                      height: 223,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 40),
