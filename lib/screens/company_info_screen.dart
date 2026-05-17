@@ -284,25 +284,6 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                     keyboardType: TextInputType.url,
                                   ),
                                   SizedBox(height: isDesktop ? 24 : 16),
-                                  TextFormField(
-                                    controller: _aboutController,
-                                    decoration: theme
-                                        .inputDecoration(
-                                          labelText: AppLocalizations.of(context, 'about_company_optional'),
-                                          prefixIcon: Icons.description,
-                                          context: context,
-                                        )
-                                        .copyWith(
-                                          contentPadding: EdgeInsets.all(
-                                            isDesktop ? 20 : 12,
-                                          ),
-                                        ),
-                                    style: TextStyle(
-                                      fontSize: isDesktop ? 16 : 14,
-                                    ),
-                                    maxLines: 3,
-                                  ),
-                                  SizedBox(height: isDesktop ? 24 : 16),
                                   LocationDetailsForm(
                                     districtController: _districtController,
                                     stateController: _stateController,
@@ -315,14 +296,18 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                   SizedBox(height: isDesktop ? 40 : 24),
                                   SizedBox(
                                     width: double.infinity,
-                                    height: isDesktop ? 56 : 48,
+                                    height: isDesktop ? 56 : 52,
                                     child: ElevatedButton(
                                       onPressed:
                                           _isLoading ? null : _submitForm,
+                                      style: ElevatedButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                      ),
                                       child:
                                           _isLoading
                                               ? CircularProgressIndicator(
                                                 strokeWidth: isDesktop ? 3 : 2,
+                                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                                               )
                                               : Text(
                                                 _hasCompany
@@ -330,6 +315,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                                     : AppLocalizations.of(context, 'submit'),
                                                 style: TextStyle(
                                                   fontSize: isDesktop ? 18 : 16,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
                                     ),

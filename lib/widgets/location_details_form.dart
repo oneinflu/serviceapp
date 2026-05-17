@@ -308,40 +308,15 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
             },
           ),
           const SizedBox(height: 16),
-          // Address field
-          if (!widget.hideAddress) ...[
-            TextFormField(
-              controller: widget.addressController,
-              maxLines: 2,
-              decoration: theme.inputDecoration(
-                labelText: AppLocalizations.of(context, 'detailed_address'),
-                prefixIcon: Icons.home,
-                context: context,
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return AppLocalizations.of(context, 'please_enter_address');
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Pincode field (at the bottom)
+          // Pincode field (at the bottom - made optional)
           TextFormField(
             controller: widget.pincodeController,
             keyboardType: TextInputType.number,
             decoration: theme.inputDecoration(
-              labelText: AppLocalizations.of(context, 'pincode'),
+              labelText: '${AppLocalizations.of(context, 'pincode')} (Optional)',
               prefixIcon: Icons.pin_drop,
               context: context,
             ),
-            validator:
-                (value) =>
-                    value == null || value.isEmpty
-                        ? AppLocalizations.of(context, 'please_enter_pincode')
-                        : null,
           ),
         ],
       ),

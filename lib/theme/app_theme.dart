@@ -286,7 +286,7 @@ class ThemeStyle {
   // Legacy Button Styles (Compatibility)
   ButtonStyle primaryButtonStyle(BuildContext context) =>
       ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 15),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
@@ -294,7 +294,7 @@ class ThemeStyle {
 
   ButtonStyle secondaryButtonStyle(BuildContext context) =>
       ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 15),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         backgroundColor: Colors.white,
         foregroundColor: primaryColor,

@@ -236,7 +236,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context);
     final userData = authProvider.userData;
     final theme = AppTheme.style;
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
@@ -287,7 +287,9 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${AppLocalizations.of(context, 'welcome_back')}${userData?['name'] ?? 'User'}! 👋',
+                      authProvider.isAuthenticated
+                          ? '${AppLocalizations.of(context, 'welcome_back')}${userData?['name'] ?? 'User'}! 👋'
+                          : 'Welcome to Serviceinfotek! 👋',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 15,
@@ -296,7 +298,9 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      AppLocalizations.of(context, 'create_profile_desc'),
+                      authProvider.isAuthenticated
+                          ? AppLocalizations.of(context, 'create_profile_desc')
+                          : 'Login or register to access premium direct jobs and services',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -308,8 +312,11 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        // Navigate to profile creation or settings
-                        Navigator.pushNamed(context, '/profile'); // Adjust route if needed
+                        if (authProvider.isAuthenticated) {
+                          Navigator.pushNamed(context, '/profile');
+                        } else {
+                          Navigator.pushNamed(context, '/login');
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
@@ -321,7 +328,9 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        AppLocalizations.of(context, 'complete_profile'),
+                        authProvider.isAuthenticated
+                            ? AppLocalizations.of(context, 'complete_profile')
+                            : 'Login or Register',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -371,8 +380,20 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
-              const SizedBox(height: 24),
+              if (!authProvider.isAuthenticated) ...[
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: theme.buildPrimaryButton(
+                    text: 'Login or Register',
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/login');
+                    },
+                  ),
+                ),
+              ],
+
+              SizedBox(height: authProvider.isAuthenticated ? 8 : 16),
               const GovernmentJobsSection(),
               const SizedBox(height: 40),
             ],

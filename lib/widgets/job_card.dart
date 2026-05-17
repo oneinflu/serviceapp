@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
+import '../providers/auth_provider.dart';
 
 class JobCard extends StatelessWidget {
   final String jobTitle;
@@ -21,6 +23,8 @@ class JobCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = AppTheme.style;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isAuthenticated = authProvider.isAuthenticated;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -86,8 +90,14 @@ class JobCard extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           theme.buildPrimaryButton(
-            text: applyLink.startsWith('tel:') ? 'Call Now' : 'Apply Now',
+            text: isAuthenticated 
+                ? (applyLink.startsWith('tel:') ? 'Call Now' : 'Apply Now') 
+                : 'Login or Register',
             onPressed: () async {
+              if (!isAuthenticated) {
+                Navigator.pushNamed(context, '/login');
+                return;
+              }
               if (applyLink.isNotEmpty) {
                 final Uri uri = Uri.parse(applyLink);
                 if (await canLaunchUrl(uri)) {
