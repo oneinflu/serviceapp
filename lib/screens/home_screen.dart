@@ -59,6 +59,12 @@ class HomeScreen extends StatelessWidget {
       return;
     }
 
+    // Job search subscription is checked at search time, not at navigation
+    if (serviceType == 'job-search') {
+      Navigator.pushNamed(context, '/job-search');
+      return;
+    }
+
     try {
       final response = await dio.request(
         'https://servicebackendnew-e2d8v.ondigitalocean.app/api/subscriptions/my-subscriptions',
@@ -158,7 +164,7 @@ class HomeScreen extends StatelessWidget {
   Widget _buildCard(
     BuildContext context,
     String title,
-    IconData icon,
+    String assetPath,
     String route,
   ) {
     final theme = AppTheme.style;
@@ -189,24 +195,11 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: EdgeInsets.all(isDesktop ? 18 : 12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Theme.of(context).primaryColor.withOpacity(0.15),
-                        Theme.of(context).primaryColor.withOpacity(0.05),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(isDesktop ? 20 : 14),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: isDesktop ? 32 : 24,
-                    color: Theme.of(context).primaryColor,
-                  ),
+                Image.asset(
+                  assetPath,
+                  width: isDesktop ? 60 : 44,
+                  height: isDesktop ? 60 : 44,
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -356,25 +349,25 @@ class HomeScreen extends StatelessWidget {
                     _buildCard(
                       context,
                       AppLocalizations.of(context, 'service_search'),
-                      Icons.search_rounded,
+                      'assets/3d_service_search.png',
                       '/service-search',
                     ),
                     _buildCard(
                       context,
                       AppLocalizations.of(context, 'service_post'),
-                      Icons.add_business_rounded,
+                      'assets/3d_service_post.png',
                       '/service-post',
                     ),
                     _buildCard(
                       context,
                       AppLocalizations.of(context, 'job_search'),
-                      Icons.work_outline_rounded,
+                      'assets/3d_job_search.png',
                       '/job-search',
                     ),
                     _buildCard(
                       context,
                       AppLocalizations.of(context, 'job_post'),
-                      Icons.post_add_rounded,
+                      'assets/3d_job_post.png',
                       '/job-post',
                     ),
                   ],
@@ -393,7 +386,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ],
 
-              SizedBox(height: authProvider.isAuthenticated ? 8 : 16),
+              SizedBox(height: authProvider.isAuthenticated ? 8 : 0),
               const GovernmentJobsSection(),
               const SizedBox(height: 40),
             ],

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
+import '../theme/version_config.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,13 +31,148 @@ class _SplashScreenState extends State<SplashScreen>
       end: 1.0,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
-    // Start the animation
+    // Initialize version check and animation flow
+    _initApp();
+  }
+
+  Future<void> _initApp() async {
+    // Start animation
     _controller.forward();
 
-    // Navigate to home screen after delay
-    Future.delayed(const Duration(seconds: 3), () {
+    final startTime = DateTime.now();
+    VersionCheckResult? result;
+
+    try {
+      result = await VersionConfig.checkAppVersion();
+    } catch (e) {
+      print('Splash version check error: $e');
+    }
+
+    // Ensure splash screen displays for at least 2.5 seconds
+    final elapsed = DateTime.now().difference(startTime);
+    final remainingDelay = const Duration(milliseconds: 2500) - elapsed;
+    if (remainingDelay.inMilliseconds > 0) {
+      await Future.delayed(remainingDelay);
+    }
+
+    if (!mounted) return;
+
+    if (result != null && result.hasUpdate) {
+      _showUpdateDialog(result);
+    } else {
       Navigator.pushReplacementNamed(context, '/home');
-    });
+    }
+  }
+
+  void _showUpdateDialog(VersionCheckResult result) {
+    showDialog(
+      context: context,
+      barrierDismissible: !result.forceUpdate,
+      builder: (BuildContext context) {
+        final theme = AppTheme.style;
+
+        final dialogContent = Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: ThemeStyle.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.system_update_rounded,
+                  size: 48,
+                  color: ThemeStyle.primaryColor,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                result.forceUpdate ? 'Update Required' : 'Update Available',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: ThemeStyle.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                result.forceUpdate
+                    ? 'A new version of jirehservice is required to continue. Please update to version ${result.latestVersion} to proceed.'
+                    : 'A new version of jirehservice (${result.latestVersion}) is available. Update now to experience new features and improvements.',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: ThemeStyle.textSecondary,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              theme.buildPrimaryButton(
+                text: 'Update Now',
+                onPressed: () async {
+                  final url = Uri.parse(result.updateUrl);
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  }
+                },
+              ),
+              if (!result.forceUpdate) ...[
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushReplacementNamed(context, '/home');
+                  },
+                  child: Text(
+                    'Later',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+
+        if (result.forceUpdate) {
+          return PopScope(
+            canPop: false,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: dialogContent,
+            ),
+          );
+        }
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: dialogContent,
+        );
+      },
+    );
   }
 
   @override
@@ -43,6 +180,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.dispose();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {

@@ -85,15 +85,19 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
       filteredJobs =
           jobs.where((job) {
             final location = job['location'] ?? {};
+            // API returns categories as an array of objects
             final categories = job['categories'] as List? ?? [];
             final searchQuery = _searchController.text.toLowerCase();
 
-            // Check if any category matches the selected category
             bool categoryMatches =
                 selectedCategory == null ||
                 categories.any((cat) => cat['name'] == selectedCategory);
 
-            return (searchQuery.isEmpty) &&
+            bool searchMatches = searchQuery.isEmpty ||
+                categories.any((cat) =>
+                    (cat['name'] ?? '').toString().toLowerCase().contains(searchQuery));
+
+            return searchMatches &&
                 categoryMatches &&
                 (selectedState == null || location['state'] == selectedState) &&
                 (selectedCity == null || location['city'] == selectedCity);
@@ -557,38 +561,47 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 12),
+                                    // Full location: address → taluk → district → city → state → pincode
                                     Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 16,
-                                          color: Colors.grey[600],
-                                        ),
+                                        Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
                                         const SizedBox(width: 4),
-                                        Text(
-                                          '${location['city'] ?? ''}, ${location['state'] ?? ''}',
-                                          style: const TextStyle(
-                                            color: Colors.grey,
+                                        Expanded(
+                                          child: Text(
+                                            [
+                                              if ((location['address'] ?? '').isNotEmpty) location['address'],
+                                              if ((location['taluk'] ?? '').isNotEmpty) location['taluk'],
+                                              if ((location['district'] ?? '').isNotEmpty) location['district'],
+                                              if ((location['city'] ?? '').isNotEmpty) location['city'],
+                                              if ((location['state'] ?? '').isNotEmpty) location['state'],
+                                              if ((location['pincode'] ?? '').isNotEmpty) location['pincode'],
+                                            ].join(', '),
+                                            style: const TextStyle(color: Colors.grey),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      children: [
-                                        for (var tag in job['tags'] ?? [])
-                                          Chip(
-                                            label: Text(tag),
-                                            backgroundColor:
-                                                Colors.blue.shade50,
-                                            labelStyle: TextStyle(
-                                              color: Colors.blue.shade700,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
+                                    const SizedBox(height: 6),
+                                    // Expiry date badge
+                                    if (job['expiresAt'] != null)
+                                      Builder(builder: (ctx) {
+                                        final expiresAt = DateTime.tryParse(job['expiresAt']);
+                                        if (expiresAt == null) return const SizedBox.shrink();
+                                        final now = DateTime.now();
+                                        final daysLeft = expiresAt.difference(now).inDays;
+                                        final isExpired = expiresAt.isBefore(now);
+                                        final isNearExpiry = !isExpired && daysLeft <= 3;
+                                        final expiryColor = isExpired ? Colors.red : isNearExpiry ? Colors.orange : Colors.green;
+                                        final expiryText = isExpired ? 'Expired' : 'Expires in $daysLeft day${daysLeft == 1 ? '' : 's'}';
+                                        return Row(
+                                          children: [
+                                            Icon(Icons.timer_outlined, size: 14, color: expiryColor),
+                                            const SizedBox(width: 4),
+                                            Text(expiryText, style: TextStyle(fontSize: 12, color: expiryColor, fontWeight: FontWeight.w600)),
+                                          ],
+                                        );
+                                      }),
                                     const SizedBox(height: 12),
                                     SizedBox(
                                       width: double.infinity,

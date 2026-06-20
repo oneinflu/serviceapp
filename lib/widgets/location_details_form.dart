@@ -1,8 +1,8 @@
-import 'package:drop_down_search_field/drop_down_search_field.dart';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../providers/auth_provider.dart';
 import '../l10n/app_localizations.dart';
 
 class LocationDetailsForm extends StatefulWidget {
@@ -13,11 +13,14 @@ class LocationDetailsForm extends StatefulWidget {
   final TextEditingController countryController;
   final TextEditingController addressController;
   final bool showTitle;
-  final bool isDesktop; // Add this line
+  final bool isDesktop;
   final bool hideAddress;
+  /// Optional external controller for the locality input field.
+  /// If provided, the parent can read the raw locality text the user typed.
+  final TextEditingController? localityController;
 
   const LocationDetailsForm({
-    Key? key,
+    super.key,
     required this.districtController,
     required this.stateController,
     required this.cityController,
@@ -25,140 +28,182 @@ class LocationDetailsForm extends StatefulWidget {
     required this.countryController,
     required this.addressController,
     this.showTitle = true,
-    this.isDesktop = false, // Add this line
+    this.isDesktop = false,
     this.hideAddress = false,
-  }) : super(key: key);
+    this.localityController,
+  });
 
   @override
   State<LocationDetailsForm> createState() => _LocationDetailsFormState();
 }
 
 class _LocationDetailsFormState extends State<LocationDetailsForm> {
-  bool _isLoading = true;
-  List<dynamic> _indiaData = [];
-  List<String> _states = [];
-  List<Map<String, dynamic>> _cities = [];
-  List<String> _towns = [];
-
-  String? _selectedState;
-  String? _selectedCity;
-  String? _selectedTown;
+  late final TextEditingController _localityController;
+  bool _ownLocalityController = false;
+  bool _isResolving = false;
+  String? _errorMessage;
+  Map<String, dynamic>? _resolvedLocation;
 
   @override
   void initState() {
     super.initState();
-    widget.countryController.text = "INDIA";
-    _fetchIndiaData();
+    // Use the parent-provided controller if available, otherwise create our own.
+    if (widget.localityController != null) {
+      _localityController = widget.localityController!;
+      _ownLocalityController = false;
+    } else {
+      _localityController = TextEditingController();
+      _ownLocalityController = true;
+    }
+
+    // Pre-populate if we are editing an existing item that already has resolved location data
+    if (widget.cityController.text.isNotEmpty || widget.stateController.text.isNotEmpty) {
+      _resolvedLocation = {
+        'locality': widget.districtController.text,
+        'city': widget.cityController.text,
+        'district': widget.districtController.text,
+        'state': widget.stateController.text,
+        'country': widget.countryController.text,
+        'pincode': widget.pincodeController.text,
+      };
+      _localityController.text = widget.districtController.text;
+    }
   }
 
-  Future<void> _fetchIndiaData() async {
+  @override
+  void didUpdateWidget(covariant LocationDetailsForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if ((widget.cityController.text.isNotEmpty && widget.cityController.text != oldWidget.cityController.text) ||
+        (widget.stateController.text.isNotEmpty && widget.stateController.text != oldWidget.stateController.text)) {
+      setState(() {
+        _resolvedLocation = {
+          'locality': widget.districtController.text,
+          'city': widget.cityController.text,
+          'district': widget.districtController.text,
+          'state': widget.stateController.text,
+          'country': widget.countryController.text,
+          'pincode': widget.pincodeController.text,
+        };
+        _localityController.text = widget.districtController.text;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    // Only dispose if we created the controller ourselves.
+    if (_ownLocalityController) {
+      _localityController.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _resolveLocality() async {
+    final locality = _localityController.text.trim();
+    if (locality.isEmpty) return;
+
     setState(() {
-      _isLoading = true;
+      _isResolving = true;
+      _errorMessage = null;
     });
 
     try {
-      final response = await http.get(
-        Uri.parse(
-          'https://levbitz-apis.netlify.app/locations/india/india.json',
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      final dio = Dio();
+      final response = await dio.get(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/location/resolve',
+        queryParameters: {'locality': locality},
+        options: Options(
+          headers: token != null ? {'Authorization': 'Bearer $token'} : null,
+          validateStatus: (status) => status! < 500,
         ),
       );
 
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (response.statusCode == 200 && response.data['status'] == 'success') {
+        final locData = response.data['data']['location'];
         setState(() {
-          _indiaData = data;
-          _states = _extractStates(data);
+          _resolvedLocation = Map<String, dynamic>.from(locData);
           
-          if (widget.stateController.text.isNotEmpty) {
-            _selectedState = widget.stateController.text;
-            _updateCities(_selectedState!, clearSelection: false);
-            
-            if (widget.cityController.text.isNotEmpty) {
-              _selectedCity = widget.cityController.text;
-              _updateTowns(_selectedCity!, clearSelection: false);
-              
-              if (widget.districtController.text.isNotEmpty) {
-                _selectedTown = widget.districtController.text;
-              }
-            }
-          }
+          // Populate the controllers with the resolved values
+          widget.stateController.text = _resolvedLocation?['state'] ?? '';
+          widget.cityController.text = _resolvedLocation?['city'] ?? '';
+          widget.districtController.text = _resolvedLocation?['district'] ?? _resolvedLocation?['locality'] ?? '';
+          widget.pincodeController.text = _resolvedLocation?['pincode'] ?? '';
+          widget.countryController.text = _resolvedLocation?['country'] ?? 'INDIA';
           
-          _isLoading = false;
+          _isResolving = false;
         });
       } else {
         setState(() {
-          _isLoading = false;
+          _resolvedLocation = null;
+          _errorMessage = response.data['message'] ?? 'Failed to resolve locality';
+          _isResolving = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context, 'failed_load_location_data'))),
-        );
+        
+        // Clear parent controllers on failure to avoid stale data submission
+        widget.stateController.clear();
+        widget.cityController.clear();
+        widget.districtController.clear();
+        widget.pincodeController.clear();
       }
     } catch (e) {
       setState(() {
-        _isLoading = false;
+        _resolvedLocation = null;
+        _errorMessage = 'Error resolving location. Please check your internet connection.';
+        _isResolving = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context, 'error_prefix')} ${e.toString()}')));
+      
+      // Clear parent controllers on failure
+      widget.stateController.clear();
+      widget.cityController.clear();
+      widget.districtController.clear();
+      widget.pincodeController.clear();
     }
   }
 
-  List<String> _extractStates(List<dynamic> data) {
-    final List<String> statesList = [];
-    for (var item in data) {
-      if (item['state'] != null) {
-        statesList.add(item['state']);
-      }
-    }
-    return statesList..sort();
-  }
-
-  void _updateCities(String state, {bool clearSelection = true}) {
-    for (var stateData in _indiaData) {
-      if (stateData['state'] == state && stateData['cities'] != null) {
-        setState(() {
-          // Fix the type casting issue by properly mapping the data
-          _cities =
-              (stateData['cities'] as List)
-                  .map((city) => city as Map<String, dynamic>)
-                  .toList();
-          if (clearSelection) {
-            _selectedCity = null;
-            _towns = [];
-            _selectedTown = null;
-            widget.stateController.text = state;
-            widget.cityController.text = "";
-            widget.districtController.text = "";
-          }
-        });
-        break;
-      }
-    }
-  }
-
-  void _updateTowns(String city, {bool clearSelection = true}) {
-    for (var cityData in _cities) {
-      if (cityData['city'] == city && cityData['towns'] != null) {
-        setState(() {
-          _towns = List<String>.from(cityData['towns']);
-          if (clearSelection) {
-            _selectedTown = null;
-            widget.cityController.text = city;
-            widget.districtController.text = "";
-          }
-        });
-        break;
-      }
-    }
-  }
-
-  void _setTown(String town) {
-    setState(() {
-      _selectedTown = town;
-      widget.districtController.text = town;
-    });
+  Widget _buildLocationDetailRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: ThemeStyle.primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: ThemeStyle.primaryColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: ThemeStyle.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: ThemeStyle.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -171,153 +216,147 @@ class _LocationDetailsFormState extends State<LocationDetailsForm> {
         children: [
           if (widget.showTitle) ...[
             Text(AppLocalizations.of(context, 'location_details'), style: theme.titleStyle),
+            const SizedBox(height: 4),
+            Text(
+              'Enter your locality to automatically resolve full address details.',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
             const SizedBox(height: 16),
           ],
-          // Country field (pre-filled with INDIA)
+          
+          // Locality Input Field
           TextFormField(
-            controller: widget.countryController,
-            enabled: false,
+            controller: _localityController,
             decoration: theme.inputDecoration(
-              labelText: AppLocalizations.of(context, 'country'),
-              prefixIcon: Icons.public,
+              labelText: 'Locality',
+              prefixIcon: Icons.location_on,
+              suffixIcon: _isResolving
+                  ? const Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(ThemeStyle.primaryColor),
+                        ),
+                      ),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.search, color: ThemeStyle.primaryColor),
+                      onPressed: _resolveLocality,
+                    ),
               context: context,
+              hintText: 'e.g. Kankanadi',
             ),
+            onFieldSubmitted: (_) => _resolveLocality(),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter a locality';
+              }
+              if (_resolvedLocation == null && !_isResolving) {
+                return 'Please search and verify your locality';
+              }
+              return null;
+            },
           ),
-          const SizedBox(height: 16),
-
-          // State dropdown
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : DropDownSearchField<String>(
-                  textFieldConfiguration: TextFieldConfiguration(
-                    controller: TextEditingController(text: _selectedState),
-                    decoration: theme.searchDropdownDecoration(
-                      labelText: AppLocalizations.of(context, 'state'),
-                      prefixIcon: Icons.map,
-                      context: context,
-                      hintText: AppLocalizations.of(context, 'select_state'),
+          
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.red.shade700, fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ),
-                  displayAllSuggestionWhenTap: true,
-                  isMultiSelectDropdown: false,
-                  suggestionsCallback: (pattern) {
-                    return _states
-                        .where((state) => state.toLowerCase().contains(pattern.toLowerCase()))
-                        .toList();
-                  },
-                  itemBuilder: (context, suggestion) {
-                    return ListTile(
-                      title: Text(suggestion),
-                    );
-                  },
-                  onSuggestionSelected: (suggestion) {
-                    setState(() {
-                      _selectedState = suggestion;
-                    });
-                    _updateCities(suggestion);
-                    widget.stateController.text = suggestion;
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return AppLocalizations.of(context, 'please_select_state');
-                    }
-                    return null;
-                  },
-                ),
-          const SizedBox(height: 16),
-
-          // City dropdown
-          DropDownSearchField<String>(
-            textFieldConfiguration: TextFieldConfiguration(
-              controller: TextEditingController(text: _selectedCity),
-              enabled: _selectedState != null,
-              decoration: theme.searchDropdownDecoration(
-                labelText: AppLocalizations.of(context, 'city'),
-                prefixIcon: Icons.location_city,
-                context: context,
-                hintText: AppLocalizations.of(context, 'select_city'),
+                ],
               ),
             ),
-            displayAllSuggestionWhenTap: true,
-            isMultiSelectDropdown: false,
-            suggestionsCallback: (pattern) {
-              if (_selectedState == null) return [];
-              return _cities
-                  .map((cityData) => cityData['city'] as String)
-                  .where(
-                    (city) =>
-                        city.toLowerCase().contains(pattern.toLowerCase()),
-                  )
-                  .toList();
-            },
-            itemBuilder: (context, suggestion) {
-              return ListTile(title: Text(suggestion));
-            },
-            onSuggestionSelected: (suggestion) {
-              setState(() {
-                _selectedCity = suggestion;
-              });
-              _updateTowns(suggestion);
-              widget.cityController.text = suggestion;
-            },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return AppLocalizations.of(context, 'please_select_city');
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-
-          // Town/District dropdown
-          DropDownSearchField<String>(
-            textFieldConfiguration: TextFieldConfiguration(
-              controller: TextEditingController(text: _selectedTown),
-              enabled: _selectedCity != null,
-
-              decoration: theme.searchDropdownDecoration(
-                labelText: AppLocalizations.of(context, 'town_district'),
-                prefixIcon: Icons.location_on,
-                context: context,
-                hintText: AppLocalizations.of(context, 'select_town_district'),
+          ],
+          
+          if (_resolvedLocation != null) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ThemeStyle.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.verified, color: Colors.green, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Location Verified',
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20, thickness: 1),
+                  _buildLocationDetailRow(
+                    'Locality',
+                    _resolvedLocation!['locality'] ?? '',
+                    Icons.my_location,
+                  ),
+                  if (_resolvedLocation!['city'] != null && _resolvedLocation!['city'].toString().isNotEmpty)
+                    _buildLocationDetailRow(
+                      'City',
+                      _resolvedLocation!['city'] ?? '',
+                      Icons.location_city,
+                    ),
+                  if (_resolvedLocation!['taluk'] != null && _resolvedLocation!['taluk'].toString().isNotEmpty)
+                    _buildLocationDetailRow(
+                      'Taluk',
+                      _resolvedLocation!['taluk'] ?? '',
+                      Icons.explore,
+                    ),
+                  if (_resolvedLocation!['district'] != null && _resolvedLocation!['district'].toString().isNotEmpty)
+                    _buildLocationDetailRow(
+                      'District',
+                      _resolvedLocation!['district'] ?? '',
+                      Icons.map,
+                    ),
+                  if (_resolvedLocation!['state'] != null && _resolvedLocation!['state'].toString().isNotEmpty)
+                    _buildLocationDetailRow(
+                      'State',
+                      _resolvedLocation!['state'] ?? '',
+                      Icons.landscape,
+                    ),
+                  if (_resolvedLocation!['country'] != null && _resolvedLocation!['country'].toString().isNotEmpty)
+                    _buildLocationDetailRow(
+                      'Country',
+                      _resolvedLocation!['country'] ?? '',
+                      Icons.public,
+                    ),
+                  if (_resolvedLocation!['pincode'] != null && _resolvedLocation!['pincode'].toString().isNotEmpty)
+                    _buildLocationDetailRow(
+                      'Pincode',
+                      _resolvedLocation!['pincode'] ?? '',
+                      Icons.pin_drop,
+                    ),
+                ],
               ),
             ),
-            displayAllSuggestionWhenTap: true,
-            isMultiSelectDropdown: false,
-            suggestionsCallback: (pattern) {
-              if (_selectedCity == null) return [];
-              return _towns
-                  .where(
-                    (town) =>
-                        town.toLowerCase().contains(pattern.toLowerCase()),
-                  )
-                  .toList();
-            },
-            itemBuilder: (context, suggestion) {
-              return ListTile(title: Text(suggestion));
-            },
-            onSuggestionSelected: (suggestion) {
-              _setTown(suggestion);
-              widget.districtController.text = suggestion;
-            },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return AppLocalizations.of(context, 'please_select_town_district');
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          // Pincode field (at the bottom - made optional)
-          TextFormField(
-            controller: widget.pincodeController,
-            keyboardType: TextInputType.number,
-            decoration: theme.inputDecoration(
-              labelText: '${AppLocalizations.of(context, 'pincode')} (Optional)',
-              prefixIcon: Icons.pin_drop,
-              context: context,
-            ),
-          ),
+          ],
         ],
       ),
     );

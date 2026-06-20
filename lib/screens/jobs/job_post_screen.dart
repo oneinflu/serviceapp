@@ -20,6 +20,7 @@ class JobPostScreen extends StatefulWidget {
 class _JobPostScreenState extends State<JobPostScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _localityController = TextEditingController();
   final TextEditingController _districtController = TextEditingController();
   final TextEditingController _stateController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
@@ -193,23 +194,26 @@ class _JobPostScreenState extends State<JobPostScreen> {
 
     setState(() => _isLoading = true);
 
-    // Create the base request data
+    // Send the raw locality string — the backend resolves it to full location.
     final Map<String, dynamic> requestData = {
       "categoriesIds": _selectedCategories.map((cat) => cat['id']).toList(),
-      "location": {
-        "district": _districtController.text,
-        "state": _stateController.text,
-        "city": _cityController.text,
-        "pincode": _pincodeController.text,
-        "country": _countryController.text,
-        "address": _addressController.text,
-      },
       "isCompanyPost": _isCompanyPost,
     };
 
-    // Add companyId if it's a company post
-    if (_isCompanyPost && _companyId != null) {
-      requestData["companyId"] = _companyId;
+    if (_isCompanyPost) {
+      requestData["location"] = {
+        "address": _addressController.text.trim(),
+        "district": _districtController.text.trim(),
+        "state": _stateController.text.trim(),
+        "city": _cityController.text.trim(),
+        "pincode": _pincodeController.text.trim(),
+        "country": _countryController.text.trim(),
+      };
+      if (_companyId != null) {
+        requestData["companyId"] = _companyId;
+      }
+    } else {
+      requestData["locality"] = _localityController.text.trim();
     }
 
     try {
@@ -555,6 +559,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
                 // Location Section
                 if (!_isCompanyPost) ...[
                   LocationDetailsForm(
+                    localityController: _localityController,
                     districtController: _districtController,
                     stateController: _stateController,
                     cityController: _cityController,

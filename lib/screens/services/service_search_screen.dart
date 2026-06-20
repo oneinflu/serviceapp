@@ -20,6 +20,8 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
   bool isLoading = true;
   String? error;
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _localityController = TextEditingController();
+  bool isSearching = false; // true when showing backend search results
 
   // Filter and sort state
   String? selectedDistrict;
@@ -121,6 +123,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
       setState(() {
         isLoading = true;
         error = null;
+        isSearching = false;
       });
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -134,24 +137,67 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
         return;
       }
 
-      var headers = {'Authorization': 'Bearer $token'};
-
-      var dio = Dio();
-      var response = await dio.request(
+      var response = await Dio().get(
         'https://servicebackendnew-e2d8v.ondigitalocean.app/api/services',
-        options: Options(method: 'GET', headers: headers),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       if (response.statusCode == 200) {
         setState(() {
           services = response.data['data']['services'] ?? [];
-          filteredServices = services; // Show all services by default
+          filteredServices = services;
           isLoading = false;
-          extractUniqueLocations(); // Extract location data after fetching
+          extractUniqueLocations();
         });
       } else {
         setState(() {
           error = response.statusMessage ?? AppLocalizations.of(context, 'failed_to_fetch_services');
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
+  /// Calls GET /api/services/search?keyword=...&locality=... for server-side search.
+  /// Falls back to fetchServices() when both fields are empty.
+  Future<void> searchServices() async {
+    final keyword = _searchController.text.trim();
+    final locality = _localityController.text.trim();
+
+    if (keyword.isEmpty && locality.isEmpty) {
+      fetchServices();
+      return;
+    }
+
+    try {
+      setState(() {
+        isLoading = true;
+        error = null;
+        isSearching = true;
+      });
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      final Map<String, String> queryParams = {};
+      if (keyword.isNotEmpty) queryParams['keyword'] = keyword;
+      if (locality.isNotEmpty) queryParams['locality'] = locality;
+
+      final response = await Dio().get(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/services/search',
+        queryParameters: queryParams,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200) {
+        final results = List<dynamic>.from(response.data['data']['services'] ?? []);
+        setState(() {
+          filteredServices = results;
           isLoading = false;
         });
       }
@@ -401,12 +447,72 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                           ],
                         ),
                       ),
-                      onChanged: (_) => applyFiltersAndSort(),
+                      onChanged: (_) {
+                        if (!isSearching) applyFiltersAndSort();
+                      },
+                      onSubmitted: (_) => searchServices(),
                     ),
-                    // Active filters display
-                    if (selectedState != null ||
+                    const SizedBox(height: 12),
+                    // Locality field
+                    TextField(
+                      controller: _localityController,
+                      decoration: theme.inputDecoration(
+                        labelText: AppLocalizations.of(context, 'locality'),
+                        prefixIcon: Icons.location_on_outlined,
+                        context: context,
+                        hintText: 'e.g. Kankanadi',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _localityController.clear();
+                            if (_searchController.text.isEmpty) fetchServices();
+                          },
+                        ),
+                      ),
+                      onSubmitted: (_) => searchServices(),
+                    ),
+                    const SizedBox(height: 12),
+                    // Search button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: searchServices,
+                        icon: const Icon(Icons.search, color: Colors.white),
+                        label: Text(
+                          AppLocalizations.of(context, 'search'),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                        style: theme.primaryButtonStyle(context),
+                      ),
+                    ),
+                    if (isSearching)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 14, color: Colors.grey[500]),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Showing results from server search',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                _localityController.clear();
+                                fetchServices();
+                              },
+                              child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    // Active filters display (only shown when not in server-search mode)
+                    if (!isSearching && (selectedState != null ||
                         selectedCity != null ||
-                        selectedDistrict != null)
+                        selectedDistrict != null))
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Wrap(
@@ -511,15 +617,17 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                         itemBuilder: (context, index) {
                           final service = filteredServices[index];
                           final userObj = service['user'];
-                          final userName = (userObj is Map) ? (userObj['name'] ?? AppLocalizations.of(context, 'unknown_user')) : AppLocalizations.of(context, 'unknown_user');
+                          final isCompanyPost = service['isCompanyPost'] == true;
+                          final companyObj = service['companyId'];
+                          // Show company name for company posts, user name otherwise
+                          final displayName = isCompanyPost && companyObj is Map && (companyObj['name'] ?? '').isNotEmpty
+                              ? companyObj['name'] as String
+                              : (userObj is Map) ? (userObj['name'] ?? AppLocalizations.of(context, 'unknown_user')) : AppLocalizations.of(context, 'unknown_user');
                           String categoryName = '';
                           if (service['categoryPrices'] != null && (service['categoryPrices'] as List).isNotEmpty) {
                             categoryName = service['categoryPrices'][0]['category']?['name'] ?? '';
                           }
                           final location = service['location'] ?? {};
-                          final address = location['address'] ?? '';
-                          final city = location['city'] ?? '';
-                          final state = location['state'] ?? '';
                           final userPhone = service['user']?['phone'];
 
                           return Container(
@@ -570,13 +678,24 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                               ],
                                             ),
                                             const SizedBox(height: 6),
-                                            Text(
-                                              userName,
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                color: Colors.grey[700],
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                            Row(
+                                              children: [
+                                                if (isCompanyPost)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(right: 4),
+                                                    child: Icon(Icons.business, size: 14, color: Colors.grey[600]),
+                                                  ),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayName,
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      color: Colors.grey[700],
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                             const SizedBox(height: 6),
                                             Row(
@@ -589,7 +708,14 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                                                 const SizedBox(width: 4),
                                                 Expanded(
                                                   child: Text(
-                                                    [if (address.isNotEmpty) address, if (city.isNotEmpty) city, if (state.isNotEmpty) state].join(', '),
+                                                    [
+                                                       if ((location['address'] ?? '').isNotEmpty) location['address'],
+                                                       if ((location['taluk'] ?? '').isNotEmpty) location['taluk'],
+                                                       if ((location['district'] ?? '').isNotEmpty) location['district'],
+                                                       if ((location['city'] ?? '').isNotEmpty) location['city'],
+                                                       if ((location['state'] ?? '').isNotEmpty) location['state'],
+                                                       if ((location['pincode'] ?? '').isNotEmpty) location['pincode'],
+                                                     ].join(', '),
                                                     style: TextStyle(
                                                       fontSize: 13,
                                                       color: Colors.grey[500],

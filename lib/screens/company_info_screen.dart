@@ -31,6 +31,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
   final _pincodeController = TextEditingController();
   final _countryController = TextEditingController();
   final _addressController = TextEditingController();
+  final _localityController = TextEditingController();
 
   bool _isLoading = false;
   bool _isLoadingCompanyData = true;
@@ -54,6 +55,22 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _websiteController.dispose();
+    _aboutController.dispose();
+    _logoController.dispose();
+    _districtController.dispose();
+    _stateController.dispose();
+    _cityController.dispose();
+    _pincodeController.dispose();
+    _countryController.dispose();
+    _addressController.dispose();
+    _localityController.dispose();
+    super.dispose();
+  }
+
   // Add this method to prefill the form with company data
   void _prefillCompanyData(dynamic company) {
     setState(() {
@@ -74,6 +91,19 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
         _districtController.text = company['location']['district'] ?? '';
         _pincodeController.text = company['location']['pincode'] ?? '';
         _addressController.text = company['location']['address'] ?? '';
+      }
+
+      if (company['locality'] != null) {
+        _localityController.text = company['locality'] ?? '';
+      } else if (company['location'] != null) {
+        final loc = company['location'];
+        final parts = [
+          if (loc['address'] != null && loc['address'].toString().isNotEmpty) loc['address'],
+          if (loc['city'] != null && loc['city'].toString().isNotEmpty) loc['city'],
+          if (loc['state'] != null && loc['state'].toString().isNotEmpty) loc['state'],
+          if (loc['country'] != null && loc['country'].toString().isNotEmpty) loc['country'],
+        ];
+        _localityController.text = parts.join(', ');
       }
     });
   }
@@ -125,6 +155,19 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                     company['location']['district'] ?? '';
                 _pincodeController.text = company['location']['pincode'] ?? '';
                 _addressController.text = company['location']['address'] ?? '';
+              }
+
+              if (company['locality'] != null) {
+                _localityController.text = company['locality'] ?? '';
+              } else if (company['location'] != null) {
+                final loc = company['location'];
+                final parts = [
+                  if (loc['address'] != null && loc['address'].toString().isNotEmpty) loc['address'],
+                  if (loc['city'] != null && loc['city'].toString().isNotEmpty) loc['city'],
+                  if (loc['state'] != null && loc['state'].toString().isNotEmpty) loc['state'],
+                  if (loc['country'] != null && loc['country'].toString().isNotEmpty) loc['country'],
+                ];
+                _localityController.text = parts.join(', ');
               }
             });
           }
@@ -291,6 +334,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                                     pincodeController: _pincodeController,
                                     countryController: _countryController,
                                     addressController: _addressController,
+                                    localityController: _localityController,
                                     isDesktop: isDesktop,
                                   ),
                                   SizedBox(height: isDesktop ? 40 : 24),
@@ -348,32 +392,42 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
 
       final dio = Dio();
       final data = {
-        'name': _nameController.text,
-        'website': _websiteController.text,
-        'about': _aboutController.text,
-        'logo': _logoController.text,
+        'name': _nameController.text.trim(),
+        'website': _websiteController.text.trim(),
+        'about': _aboutController.text.trim(),
+        'logo': _logoController.text.trim(),
+        if (_localityController.text.isNotEmpty) 'locality': _localityController.text.trim(),
         'location': {
-          'country': _countryController.text,
-          'state': _stateController.text,
-          'city': _cityController.text,
-          'district': _districtController.text,
-          'pincode': _pincodeController.text,
-          'address': _addressController.text,
+          'country': _countryController.text.trim(),
+          'state': _stateController.text.trim(),
+          'city': _cityController.text.trim(),
+          'district': _districtController.text.trim(),
+          'pincode': _pincodeController.text.trim(),
+          'address': _addressController.text.trim(),
         },
       };
 
-      final response = await dio.post(
-        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/companies',
-        data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
+      Response response;
+      if (_hasCompany && _companyId != null) {
+        response = await dio.patch(
+          'https://servicebackendnew-e2d8v.ondigitalocean.app/api/companies/$_companyId',
+          data: data,
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        );
+      } else {
+        response = await dio.post(
+          'https://servicebackendnew-e2d8v.ondigitalocean.app/api/companies',
+          data: data,
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        );
+      }
 
-      if (response.statusCode == 201 && mounted) {
+      if ((response.statusCode == 200 || response.statusCode == 201) && mounted) {
         await authProvider.refreshUserData();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Company information saved successfully!'),
+            SnackBar(
+              content: Text(_hasCompany ? 'Company information updated successfully!' : 'Company information saved successfully!'),
               backgroundColor: Colors.green,
             ),
           );

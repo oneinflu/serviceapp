@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import 'payout_details_screen.dart';
 
 class WalletDashboardScreen extends StatefulWidget {
   const WalletDashboardScreen({super.key});
@@ -164,6 +167,22 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> with Sing
           backgroundColor: Theme.of(context).primaryColor,
           iconTheme: const IconThemeData(color: Colors.white),
           elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.account_balance_outlined, color: Colors.white),
+              tooltip: 'Payout Details',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PayoutDetailsScreen()),
+                ).then((value) {
+                  if (value == true) {
+                    fetchSummary();
+                  }
+                });
+              },
+            ),
+          ],
           bottom: TabBar(
             controller: _tabController,
             isScrollable: true,
@@ -269,10 +288,34 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> with Sing
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text(
-                '${AppLocalizations.of(context, 'min_withdrawal_is')}₹$minWithdrawal',
+                '${AppLocalizations.of(context, 'min_withdrawal_is')}$minWithdrawal',
                 style: const TextStyle(color: Colors.red, fontSize: 12.0),
               ),
             ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PayoutDetailsScreen()),
+              ).then((value) {
+                if (value == true) {
+                  fetchSummary();
+                }
+              });
+            },
+            icon: Icon(Icons.edit_note, color: Theme.of(context).primaryColor),
+            label: Text(
+              'Manage Payout Details',
+              style: TextStyle(
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14.0,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -374,7 +417,137 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> with Sing
   Widget _buildNetworkTab(dynamic theme) {
     if (isLoadingTree) return Center(child: theme.loadingIndicator(color: Theme.of(context).primaryColor));
     if (errorTree != null) return Center(child: Text('Error: $errorTree'));
-    if (treeData.isEmpty) return Center(child: Text(AppLocalizations.of(context, 'no_referrals_yet')));
+    
+    if (treeData.isEmpty) {
+      final referralCode = summaryData?['referralId'] ?? 
+                           Provider.of<AuthProvider>(context, listen: false).userData?['referralId'] ?? 
+                           'N/A';
+
+      return RefreshIndicator(
+        onRefresh: () async {
+          await fetchSummary();
+          await fetchTree();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.group_add_outlined,
+                    size: 64,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Start Building Your Network!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Share your referral code with friends and colleagues to earn commissions when they join the platform!',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              if (referralCode != 'N/A') ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'YOUR REFERRAL CODE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[500],
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            referralCode,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).primaryColor,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: referralCode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(AppLocalizations.of(context, 'copied_to_clipboard')),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.copy, color: Theme.of(context).primaryColor),
+                        tooltip: AppLocalizations.of(context, 'tap_to_copy'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final message = 'Check out this amazing app! Download now and get exclusive benefits. Use my referral code: $referralCode';
+                    Share.share(message);
+                  },
+                  icon: const Icon(Icons.share, size: 18, color: Colors.white),
+                  label: const Text(
+                    'Share Code',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: fetchTree,
@@ -422,7 +595,137 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> with Sing
   Widget _buildCommissionsTab(dynamic theme) {
     if (isLoadingCommissions) return Center(child: theme.loadingIndicator(color: Theme.of(context).primaryColor));
     if (errorCommissions != null) return Center(child: Text('Error: $errorCommissions'));
-    if (commissionsData.isEmpty) return Center(child: Text(AppLocalizations.of(context, 'no_commissions_yet')));
+    
+    if (commissionsData.isEmpty) {
+      final referralCode = summaryData?['referralId'] ?? 
+                           Provider.of<AuthProvider>(context, listen: false).userData?['referralId'] ?? 
+                           'N/A';
+
+      return RefreshIndicator(
+        onRefresh: () async {
+          await fetchSummary();
+          await fetchCommissions();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.monetization_on_outlined,
+                    size: 64,
+                    color: Colors.green,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'No Commission Earnings Yet!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Once your network referrals purchase subscriptions or publish premium postings, your commissions will be calculated and paid out instantly here!',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              if (referralCode != 'N/A') ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'SHARE YOUR CODE TO START EARNING',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[500],
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            referralCode,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).primaryColor,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: referralCode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(AppLocalizations.of(context, 'copied_to_clipboard')),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.copy, color: Theme.of(context).primaryColor),
+                        tooltip: AppLocalizations.of(context, 'tap_to_copy'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final message = 'Check out this amazing app! Download now and get exclusive benefits. Use my referral code: $referralCode';
+                    Share.share(message);
+                  },
+                  icon: const Icon(Icons.share, size: 18, color: Colors.white),
+                  label: const Text(
+                    'Share Code & Invite',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: fetchCommissions,
@@ -453,7 +756,61 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> with Sing
   Widget _buildTransactionsTab(dynamic theme) {
     if (isLoadingTransactions) return Center(child: theme.loadingIndicator(color: Theme.of(context).primaryColor));
     if (errorTransactions != null) return Center(child: Text('Error: $errorTransactions'));
-    if (transactionsData.isEmpty) return Center(child: Text(AppLocalizations.of(context, 'no_transactions_found')));
+    
+    if (transactionsData.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () async {
+          await fetchSummary();
+          await fetchTransactions();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 32),
+              Center(
+                child: Container(
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.receipt_long_outlined,
+                    size: 64,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'No Transaction History',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'You haven\'t made any withdrawal requests or payout transactions yet. When you request a withdrawal, your complete history will appear right here!',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.45,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: fetchTransactions,

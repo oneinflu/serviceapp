@@ -20,6 +20,7 @@ class ServicePostScreen extends StatefulWidget {
 class _ServicePostScreenState extends State<ServicePostScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _localityController = TextEditingController();
   final TextEditingController _districtController = TextEditingController();
   final TextEditingController _stateController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
@@ -354,20 +355,13 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
 
     setState(() => _isLoading = true);
 
-    // Updated request format with categoryPrices and company info
+    // Send the raw locality string — the backend resolves it to full location.
     final Map<String, dynamic> requestData = {
       "categoryPrices":
           _selectedCategories
               .map((cat) => {"category": cat['id'], "price": cat['price']})
               .toList(),
-      "location": {
-        "district": _districtController.text,
-        "state": _stateController.text,
-        "city": _cityController.text,
-        "pincode": _pincodeController.text,
-        "country": _countryController.text,
-        "address": _addressController.text,
-      },
+      "locality": _localityController.text.trim(),
       "isCompanyPost": _isCompanyPost,
     };
 
@@ -799,6 +793,7 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                 // Location Section
                 if (!_isCompanyPost) ...[
                   LocationDetailsForm(
+                    localityController: _localityController,
                     districtController: _districtController,
                     stateController: _stateController,
                     cityController: _cityController,

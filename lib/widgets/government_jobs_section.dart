@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'job_card.dart';
+import 'service_subscription_sheet.dart';
 
 class GovernmentJobsSection extends StatefulWidget {
   const GovernmentJobsSection({super.key});
@@ -24,6 +25,7 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
   List<dynamic> govtJobs = [];
   List<dynamic> userJobs = [];
   bool isLoading = true;
+  bool hasJobSearchSubscription = false;
 
   @override
   void initState() {
@@ -68,9 +70,33 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
         print('Error fetching user jobs: $e');
       }
 
+      // Fetch user's subscriptions
+      bool subCheck = false;
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final token = authProvider.token;
+        if (token != null) {
+          var responseSub = await dio.get(
+            'https://servicebackendnew-e2d8v.ondigitalocean.app/api/subscriptions/my-subscriptions',
+            options: Options(headers: {'Authorization': 'Bearer $token'}),
+          );
+          if (responseSub.statusCode == 200 && responseSub.data['status'] == 'success') {
+            final List subscriptions = responseSub.data['data']['subscriptions'] ?? [];
+            subCheck = subscriptions.any((sub) {
+              final type = sub['type']?.toString().toUpperCase();
+              final isExpired = DateTime.parse(sub['endDate']).isBefore(DateTime.now());
+              return (type == 'JOB_SEARCH' || type == 'SERVICE_POST') && !isExpired;
+            });
+          }
+        }
+      } catch (e) {
+        print('Error fetching subscriptions: $e');
+      }
+
       setState(() {
         govtJobs = fetchedGovt;
         userJobs = fetchedUser;
+        hasJobSearchSubscription = subCheck;
         isLoading = false;
       });
     } catch (e) {
@@ -81,6 +107,170 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
     }
   }
 
+  void _showSubscriptionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(ThemeStyle.cardBorderRadius),
+        ),
+      ),
+      builder: (context) => const ServiceSubscriptionSheet(
+        serviceType: 'job-search',
+        price: 100,
+        benefits: [
+          'Access to all job listings for 365 days',
+          'Direct application to jobs',
+          'Early access to new job postings',
+          'Resume builder and job alerts',
+        ],
+        isPremium: true,
+      ),
+    ).then((_) {
+      fetchJobs();
+    });
+  }
+
+  Widget _buildSubscriptionCard() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final theme = AppTheme.style;
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.amber.shade200, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.shade100.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -30,
+              top: -30,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.amber.withOpacity(0.08),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.amber.shade50,
+                    ),
+                    child: Icon(
+                      Icons.lock_person_rounded,
+                      size: 40,
+                      color: Colors.amber.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Unlock $selectedJobType',
+                    style: theme.titleStyle.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'An active Job Search subscription is required to view details and apply for direct private or individual job posts.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildMiniBenefit(Icons.check_circle_outline, 'Direct Apply'),
+                      const SizedBox(width: 16),
+                      _buildMiniBenefit(Icons.phone_in_talk_outlined, 'Direct Contacts'),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (!authProvider.isAuthenticated) {
+                          Navigator.pushNamed(context, '/login').then((res) {
+                            if (res == true) {
+                              fetchJobs();
+                            }
+                          });
+                        } else {
+                          _showSubscriptionSheet(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF002366),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        authProvider.isAuthenticated
+                            ? 'Subscribe Now • ₹100'
+                            : 'Login to Subscribe',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniBenefit(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.amber.shade800),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            color: Colors.grey[800],
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
   List<dynamic> getFilteredJobs() {
     if (selectedJobType == 'Govt Jobs' || selectedJobType == 'Semi Govt Jobs') {
       return govtJobs
@@ -88,11 +278,11 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
           .toList();
     } else if (selectedJobType == 'Private Jobs') {
       return userJobs
-          .where((job) => job['company'] != null)
+          .where((job) => job['isCompanyPost'] == true || job['companyId'] != null || job['company'] != null)
           .toList();
     } else if (selectedJobType == 'Individual Jobs') {
       return userJobs
-          .where((job) => job['company'] == null)
+          .where((job) => job['isCompanyPost'] != true && job['companyId'] == null && job['company'] == null)
           .toList();
     }
     return [];
@@ -164,6 +354,8 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
               ),
             ),
           )
+        else if ((selectedJobType == 'Private Jobs' || selectedJobType == 'Individual Jobs') && !hasJobSearchSubscription)
+          _buildSubscriptionCard()
         else if (filteredJobs.isEmpty)
           Container(
             width: double.infinity,
@@ -208,7 +400,7 @@ class _GovernmentJobsSectionState extends State<GovernmentJobsSection> {
                 final userObj = job['user'];
                 final userName = (userObj is Map) ? (userObj['name'] ?? 'Individual Post') : 'Individual Post';
                 
-                final company = job['company'];
+                final company = job['companyId'] ?? job['company'];
                 if (company is Map && company['name'] != null) {
                   org = company['name'];
                 } else {

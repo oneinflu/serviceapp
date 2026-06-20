@@ -62,6 +62,10 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC), // Neutral Warm Blueish
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           AppLocalizations.of(context, 'payment_history'),
           style: const TextStyle(

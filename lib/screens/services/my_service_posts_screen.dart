@@ -74,11 +74,14 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
       filteredServices =
           services.where((service) {
             final location = service['location'] ?? {};
-            final category = service['category'] ?? {};
+            // categoryPrices is an array of {category: {name:...}, price:...}
+            final categoryPrices = service['categoryPrices'] as List? ?? [];
+            final catNames = categoryPrices
+                .map((cp) => (cp['category']?['name'] ?? '').toString().toLowerCase())
+                .toList();
             final searchQuery = _searchController.text.toLowerCase();
             final isCompanyPost = service['isCompanyPost'] ?? false;
 
-            // Add company post filter
             bool matchesCompanyFilter = true;
             if (selectedCompanyFilter != null) {
               if (selectedCompanyFilter == 'company' && !isCompanyPost) {
@@ -88,10 +91,15 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
               }
             }
 
-            return (searchQuery.isEmpty ||
-                    category['name'].toLowerCase().contains(searchQuery)) &&
-                (selectedCategory == null ||
-                    category['name'] == selectedCategory) &&
+            bool searchMatches = searchQuery.isEmpty ||
+                catNames.any((n) => n.contains(searchQuery));
+
+            final selCat = selectedCategory;
+            bool categoryMatches = selCat == null ||
+                catNames.any((n) => n == selCat.toLowerCase());
+
+            return searchMatches &&
+                categoryMatches &&
                 (selectedState == null || location['state'] == selectedState) &&
                 (selectedCity == null || location['city'] == selectedCity) &&
                 matchesCompanyFilter;
@@ -206,17 +214,15 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                           ),
                                           items:
                                               services
-                                                  .map(
-                                                    (service) =>
-                                                        service['category']?['name'],
+                                                  .expand((service) =>
+                                                    (service['categoryPrices'] as List? ?? [])
+                                                        .map((cp) => cp['category']?['name'])
                                                   )
                                                   .whereType<String>()
                                                   .toSet()
                                                   .map(
                                                     (category) =>
-                                                        DropdownMenuItem<
-                                                          String
-                                                        >(
+                                                        DropdownMenuItem<String>(
                                                           value: category,
                                                           child: Text(category),
                                                         ),
@@ -566,36 +572,42 @@ class _MyServicePostsScreenState extends State<MyServicePostsScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    Row(
+                                    // Category chips
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 6,
                                       children: [
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 16,
-                                          color: Colors.grey[600],
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${location['city'] ?? ''}, ${location['state'] ?? ''}',
-                                          style: const TextStyle(
-                                            color: Colors.grey,
+                                        for (var cp in (service['categoryPrices'] as List? ?? []))
+                                          Chip(
+                                            avatar: Icon(Icons.category, size: 14, color: Theme.of(context).primaryColor),
+                                            label: Text(
+                                              '${cp['category']?['name'] ?? ''}',
+                                              style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor),
+                                            ),
+                                            backgroundColor: Theme.of(context).primaryColor.withOpacity(0.08),
                                           ),
-                                        ),
                                       ],
                                     ),
                                     const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
+                                    // Full location display
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        for (var tag in service['tags'] ?? [])
-                                          Chip(
-                                            label: Text(tag),
-                                            backgroundColor:
-                                                Colors.blue.shade50,
-                                            labelStyle: TextStyle(
-                                              color: Colors.blue.shade700,
-                                              fontSize: 12,
-                                            ),
+                                        Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            [
+                                              if ((location['address'] ?? '').isNotEmpty) location['address'],
+                                              if ((location['taluk'] ?? '').isNotEmpty) location['taluk'],
+                                              if ((location['district'] ?? '').isNotEmpty) location['district'],
+                                              if ((location['city'] ?? '').isNotEmpty) location['city'],
+                                              if ((location['state'] ?? '').isNotEmpty) location['state'],
+                                              if ((location['pincode'] ?? '').isNotEmpty) location['pincode'],
+                                            ].join(', '),
+                                            style: const TextStyle(color: Colors.grey),
                                           ),
+                                        ),
                                       ],
                                     ),
                                     const SizedBox(height: 12),

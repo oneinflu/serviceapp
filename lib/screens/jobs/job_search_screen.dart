@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
-import '../../theme/app_theme.dart'; // Add this import
+import '../../theme/app_theme.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/service_subscription_sheet.dart';
 
 class JobSearchScreen extends StatefulWidget {
   const JobSearchScreen({super.key});
@@ -18,8 +20,9 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
   List<dynamic> filteredJobs = [];
   bool isLoading = true;
   String? error;
-  final TextEditingController _searchController =
-      TextEditingController(); // Add search controller
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _localityController = TextEditingController();
+  bool isSearching = false; // true when showing backend search results
 
   // Filter state
   String? selectedDistrict;
@@ -43,11 +46,99 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
   final TextEditingController _seekerSearchController = TextEditingController();
   final TextEditingController _seekerCityController = TextEditingController();
 
+  static const String _pendingKeywordKey = 'pending_job_search_keyword';
+  static const String _pendingLocalityKey = 'pending_job_search_locality';
+
   @override
   void initState() {
     super.initState();
     fetchJobs();
     fetchSeekers();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPendingSearch());
+  }
+
+  Future<void> _loadPendingSearch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keyword = prefs.getString(_pendingKeywordKey);
+    final locality = prefs.getString(_pendingLocalityKey);
+    if (keyword != null || locality != null) {
+      if (keyword != null) _searchController.text = keyword;
+      if (locality != null) _localityController.text = locality;
+      await prefs.remove(_pendingKeywordKey);
+      await prefs.remove(_pendingLocalityKey);
+      searchJobs();
+    }
+  }
+
+  Future<void> _checkSubscriptionThenSearch() async {
+    final keyword = _searchController.text.trim();
+    final locality = _localityController.text.trim();
+
+    if (keyword.isEmpty && locality.isEmpty) {
+      fetchJobs();
+      return;
+    }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      await Navigator.pushNamed(context, '/login');
+      return;
+    }
+
+    final token = authProvider.token;
+
+    // Persist search inputs so they survive the subscription flow
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_pendingKeywordKey, keyword);
+    await prefs.setString(_pendingLocalityKey, locality);
+
+    try {
+      final response = await Dio().get(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/subscriptions/my-subscriptions',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      bool isSubscribed = false;
+      if (response.statusCode == 200) {
+        final subscriptions = response.data['data']['subscriptions'] as List;
+        isSubscribed = subscriptions.any(
+          (sub) =>
+              (sub['type'] == 'JOB_SEARCH' || sub['type'] == 'SERVICE_POST') &&
+              DateTime.parse(sub['endDate']).isAfter(DateTime.now()),
+        );
+      }
+
+      if (isSubscribed) {
+        await prefs.remove(_pendingKeywordKey);
+        await prefs.remove(_pendingLocalityKey);
+        searchJobs();
+      } else {
+        if (!context.mounted) return;
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          builder: (context) => ServiceSubscriptionSheet(
+            serviceType: 'job-search',
+            price: 100,
+            benefits: [
+              'Access to all job listings for 365 days',
+              'Direct application to jobs',
+              'Early access to new job postings',
+              'Resume builder and job alerts',
+            ],
+            isPremium: true,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${AppLocalizations.of(context, 'error_prefix')}$e')),
+      );
+    }
   }
 
   void extractUniqueLocations() {
@@ -66,6 +157,7 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
       setState(() {
         isLoading = true;
         error = null;
+        isSearching = false;
       });
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -81,7 +173,53 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
           jobs = response.data['data']['jobs'];
           filteredJobs = jobs;
           isLoading = false;
-          extractUniqueLocations(); // Extract location data after fetching
+          extractUniqueLocations();
+        });
+      }
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
+  /// Calls GET /api/jobs/search?keyword=...&locality=... for server-side search.
+  /// Falls back to fetchJobs() when both fields are empty.
+  Future<void> searchJobs() async {
+    final keyword = _searchController.text.trim();
+    final locality = _localityController.text.trim();
+
+    if (keyword.isEmpty && locality.isEmpty) {
+      fetchJobs();
+      return;
+    }
+
+    try {
+      setState(() {
+        isLoading = true;
+        error = null;
+        isSearching = true;
+      });
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      final Map<String, String> queryParams = {};
+      if (keyword.isNotEmpty) queryParams['keyword'] = keyword;
+      if (locality.isNotEmpty) queryParams['locality'] = locality;
+
+      final response = await Dio().get(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/jobs/search',
+        queryParameters: queryParams,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200) {
+        final results = List<dynamic>.from(response.data['data']['jobs'] ?? []);
+        setState(() {
+          filteredJobs = results;
+          isLoading = false;
         });
       }
     } catch (e) {
@@ -652,12 +790,72 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
                           ],
                         ),
                       ),
-                      onChanged: (_) => applyFiltersAndSort(),
+                      onChanged: (_) {
+                        if (!isSearching) applyFiltersAndSort();
+                      },
+                      onSubmitted: (_) => _checkSubscriptionThenSearch(),
                     ),
+                    const SizedBox(height: 12),
+                    // Locality field
+                    TextField(
+                      controller: _localityController,
+                      decoration: theme.inputDecoration(
+                        labelText: AppLocalizations.of(context, 'locality'),
+                        prefixIcon: Icons.location_on_outlined,
+                        context: context,
+                        hintText: 'e.g. Kankanadi',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _localityController.clear();
+                            if (_searchController.text.isEmpty) fetchJobs();
+                          },
+                        ),
+                      ),
+                      onSubmitted: (_) => _checkSubscriptionThenSearch(),
+                    ),
+                    const SizedBox(height: 12),
+                    // Search button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _checkSubscriptionThenSearch,
+                        icon: const Icon(Icons.search, color: Colors.white),
+                        label: Text(
+                          AppLocalizations.of(context, 'search'),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                        style: theme.primaryButtonStyle(context),
+                      ),
+                    ),
+                    if (isSearching)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 14, color: Colors.grey[500]),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Showing results from server search',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                _localityController.clear();
+                                fetchJobs();
+                              },
+                              child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      ),
                     // Active filters display
-                    if (selectedState != null ||
+                    if (!isSearching && (selectedState != null ||
                         selectedCity != null ||
-                        selectedDistrict != null)
+                        selectedDistrict != null))
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Wrap(
@@ -758,15 +956,17 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
                         itemBuilder: (context, index) {
                           final job = filteredJobs[index];
                           final userObj = job['user'];
-                          final userName = (userObj is Map) ? (userObj['name'] ?? 'Unknown User') : 'Unknown User';
+                          final isCompanyPost = job['isCompanyPost'] == true;
+                          final companyObj = job['companyId'];
+                          // Show company name for company posts, user name otherwise
+                          final displayName = isCompanyPost && companyObj is Map && (companyObj['name'] ?? '').isNotEmpty
+                              ? companyObj['name'] as String
+                              : (userObj is Map) ? (userObj['name'] ?? 'Unknown User') : 'Unknown User';
                           String categoryName = '';
                           if (job['categories'] != null && (job['categories'] as List).isNotEmpty) {
                             categoryName = job['categories'][0]['name'] ?? '';
                           }
                           final location = job['location'] ?? {};
-                          final address = location['address'] ?? '';
-                          final city = location['city'] ?? '';
-                          final state = location['state'] ?? '';
                           final userPhone = (userObj is Map) ? userObj['phone'] : null;
 
                           return Container(
@@ -815,13 +1015,24 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
                                               ],
                                             ),
                                             const SizedBox(height: 6),
-                                            Text(
-                                              userName,
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                color: Colors.grey[700],
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                            Row(
+                                              children: [
+                                                if (isCompanyPost)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(right: 4),
+                                                    child: Icon(Icons.business, size: 14, color: Colors.grey[600]),
+                                                  ),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayName,
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      color: Colors.grey[700],
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                             const SizedBox(height: 6),
                                             Row(
@@ -834,7 +1045,14 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
                                                 const SizedBox(width: 4),
                                                 Expanded(
                                                   child: Text(
-                                                    [if (address.isNotEmpty) address, if (city.isNotEmpty) city, if (state.isNotEmpty) state].join(', '),
+                                                    [
+                                                      if ((location['address'] ?? '').isNotEmpty) location['address'],
+                                                      if ((location['taluk'] ?? '').isNotEmpty) location['taluk'],
+                                                      if ((location['district'] ?? '').isNotEmpty) location['district'],
+                                                      if ((location['city'] ?? '').isNotEmpty) location['city'],
+                                                      if ((location['state'] ?? '').isNotEmpty) location['state'],
+                                                      if ((location['pincode'] ?? '').isNotEmpty) location['pincode'],
+                                                    ].join(', '),
                                                     style: TextStyle(
                                                       fontSize: 13,
                                                       color: Colors.grey[500],
