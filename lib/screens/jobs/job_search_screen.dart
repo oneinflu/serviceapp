@@ -18,8 +18,9 @@ class JobSearchScreen extends StatefulWidget {
 class _JobSearchScreenState extends State<JobSearchScreen> {
   List<dynamic> jobs = [];
   List<dynamic> filteredJobs = [];
-  bool isLoading = true;
+  bool isLoading = false;
   String? error;
+  bool _resultsShown = false; // results are only revealed after a successful subscription check
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _localityController = TextEditingController();
   bool isSearching = false; // true when showing backend search results
@@ -43,6 +44,7 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
   List<dynamic> seekers = [];
   bool isLoadingSeekers = false;
   String? errorSeekers;
+  bool _seekerResultsShown = false;
   final TextEditingController _seekerSearchController = TextEditingController();
   final TextEditingController _seekerCityController = TextEditingController();
 
@@ -52,8 +54,6 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
   @override
   void initState() {
     super.initState();
-    fetchJobs();
-    fetchSeekers();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadPendingSearch());
   }
 
@@ -74,11 +74,6 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
     final keyword = _searchController.text.trim();
     final locality = _localityController.text.trim();
 
-    if (keyword.isEmpty && locality.isEmpty) {
-      fetchJobs();
-      return;
-    }
-
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
       await Navigator.pushNamed(context, '/login');
@@ -87,7 +82,7 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
 
     final token = authProvider.token;
 
-    // Persist search inputs so they survive the subscription flow
+    // Persist search inputs so they survive the subscription → congratulations flow
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_pendingKeywordKey, keyword);
     await prefs.setString(_pendingLocalityKey, locality);
@@ -111,6 +106,7 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
       if (isSubscribed) {
         await prefs.remove(_pendingKeywordKey);
         await prefs.remove(_pendingLocalityKey);
+        setState(() => _resultsShown = true);
         searchJobs();
       } else {
         if (!context.mounted) return;
@@ -123,7 +119,7 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
           builder: (context) => ServiceSubscriptionSheet(
             serviceType: 'job-search',
             price: 100,
-            benefits: [
+            benefits: const [
               'Access to all job listings for 365 days',
               'Direct application to jobs',
               'Early access to new job postings',
@@ -158,6 +154,7 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
         isLoading = true;
         error = null;
         isSearching = false;
+        _resultsShown = true;
       });
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -230,11 +227,60 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
     }
   }
 
+  Future<void> _checkSubscriptionThenSearchSeekers() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    try {
+      final response = await Dio().get(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/subscriptions/my-subscriptions',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      bool isSubscribed = false;
+      if (response.statusCode == 200) {
+        final subs = response.data['data']['subscriptions'] as List;
+        isSubscribed = subs.any(
+          (sub) =>
+              (sub['type'] == 'JOB_SEARCH' || sub['type'] == 'SERVICE_POST') &&
+              DateTime.parse(sub['endDate']).isAfter(DateTime.now()),
+        );
+      }
+      if (!context.mounted) return;
+      if (isSubscribed) {
+        fetchSeekers();
+      } else {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          builder: (context) => ServiceSubscriptionSheet(
+            serviceType: 'job-search',
+            price: 100,
+            benefits: const [
+              'Access to all job listings for 365 days',
+              'Direct application to jobs',
+              'Early access to new job postings',
+              'Resume builder and job alerts',
+            ],
+            isPremium: true,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${AppLocalizations.of(context, 'error_prefix')}$e')),
+      );
+    }
+  }
+
   Future<void> fetchSeekers() async {
     try {
       setState(() {
         isLoadingSeekers = true;
         errorSeekers = null;
+        _seekerResultsShown = true;
       });
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -445,13 +491,13 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
                     prefixIcon: Icons.location_city,
                     context: context,
                   ),
-                  onSubmitted: (_) => fetchSeekers(),
+                  onSubmitted: (_) => _checkSubscriptionThenSearchSeekers(),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: fetchSeekers,
+                    onPressed: _checkSubscriptionThenSearchSeekers,
                     style: theme.primaryButtonStyle(context),
                     child: Text(AppLocalizations.of(context, 'search_seekers')),
                   ),
@@ -461,7 +507,23 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
           ),
         ),
         Expanded(
-          child: isLoadingSeekers
+          child: !_seekerResultsShown
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.person_search_outlined, size: 56, color: Colors.grey[300]),
+                      const SizedBox(height: 16),
+                      Text(AppLocalizations.of(context, 'search_seekers'),
+                          style: theme.titleStyle),
+                      const SizedBox(height: 8),
+                      Text('Enter skills & city then tap Search',
+                          style: theme.subtitleStyle,
+                          textAlign: TextAlign.center),
+                    ],
+                  ),
+                )
+              : isLoadingSeekers
               ? Center(child: theme.loadingIndicator(color: Theme.of(context).primaryColor))
               : errorSeekers != null
                   ? Center(child: Text('${AppLocalizations.of(context, 'error_prefix')}$errorSeekers'))
@@ -897,8 +959,28 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
               ),
             ),
             Expanded(
-              child:
-                  isLoading
+              child: !_resultsShown
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.work_outline, size: 56, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            Text(AppLocalizations.of(context, 'find_jobs'),
+                                style: theme.titleStyle),
+                            const SizedBox(height: 8),
+                            Text(
+                              AppLocalizations.of(context, 'adjust_filters_hint'),
+                              style: theme.subtitleStyle,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : isLoading
                       ? Center(
                         child: theme.loadingIndicator(
                           color: Theme.of(context).primaryColor,
