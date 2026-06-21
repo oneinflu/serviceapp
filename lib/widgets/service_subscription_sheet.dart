@@ -231,11 +231,27 @@ class _ServiceSubscriptionSheetState extends State<ServiceSubscriptionSheet> {
           'description': orderData['description'],
           'order_id': orderData['order']['id'],
           'prefill': orderData['prefill'],
+          'method': {
+            'upi': 1,
+            'card': 1,
+            'netbanking': 1,
+            'wallet': 1,
+          },
+          'config': {
+            'display': {
+              'blocks': {
+                'utib': {'name': 'Pay via UPI', 'instruments': [{'method': 'upi'}]},
+                'other': {'name': 'Other Methods', 'instruments': [{'method': 'card'}, {'method': 'netbanking'}, {'method': 'wallet'}]},
+              },
+              'sequence': ['block.utib', 'block.other'],
+              'preferences': {'show_default_blocks': false},
+            },
+          },
           'theme': {'color': '#2196F3'},
           'retry': {'enabled': true, 'max_count': 3},
           'send_sms_hash': true,
           'remember_customer': true,
-          'timeout': 300, // 5 minutes
+          'timeout': 300,
         };
 
         if (!kIsWeb) {
