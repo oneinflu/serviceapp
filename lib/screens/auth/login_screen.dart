@@ -22,31 +22,77 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = AppTheme.style;
-    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmall = screenHeight < 680;
+    final isMedium = screenHeight < 780;
+
+    final double logoHeight = isSmall ? 110 : (isMedium ? 150 : 190);
+    final double logoWidth = isSmall ? 90 : (isMedium ? 122 : 154);
+    final double gapAfterLogo = isSmall ? 12 : (isMedium ? 18 : 28);
+    final double gapAfterHeading = isSmall ? 16 : (isMedium ? 28 : 40);
+    final double cardPadding = isSmall ? 16 : 24;
+    final double fieldGap = isSmall ? 14 : 20;
+    final double buttonTopGap = isSmall ? 20 : 32;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Container(
-          width: double.infinity,
-          height: MediaQuery.of(context).size.height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.white, ThemeStyle.backgroundColor],
-            ),
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, ThemeStyle.backgroundColor],
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Brand Logo
-                    Container(
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: isSmall ? 8 : 16,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Register link at the top — always visible
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context, 'dont_have_account'),
+                        style: TextStyle(
+                          color: ThemeStyle.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pushReplacementNamed(context, '/register'),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context, 'register_now'),
+                          style: TextStyle(
+                            color: ThemeStyle.primaryColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: isSmall ? 8 : 16),
+
+                  // Brand Logo — centered
+                  Center(
+                    child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -66,108 +112,97 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(18),
                         child: Image.asset(
                           'assets/logo.jpeg',
-                          height: 223,
-                          width: 180,
+                          height: logoHeight,
+                          width: logoWidth,
                           fit: BoxFit.cover,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    
-                    // Welcome Text
-                    Text(
-                      AppLocalizations.of(context, 'welcome_back_header'),
-                      style: theme.headingStyle(context),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      AppLocalizations.of(context, 'glad_to_see_you_again'),
-                      style: TextStyle(
-                        color: ThemeStyle.textSecondary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
+                  ),
 
-                    // Input Card
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: theme.cardDecoration,
-                      child: Column(
-                        children: [
-                          // Email Field
-                          TextFormField(
-                            controller: _emailController,
-                            decoration: theme.inputDecoration(
-                              labelText: AppLocalizations.of(context, 'email_address'),
-                              prefixIcon: Icons.alternate_email_rounded,
-                            ),
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return AppLocalizations.of(context, 'please_enter_email');
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          
-                          // Password Field
-                          TextFormField(
-                            controller: _passwordController,
-                            decoration: theme.inputDecoration(
-                              labelText: AppLocalizations.of(context, 'password'),
-                              prefixIcon: Icons.lock_outline_rounded,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                                  color: ThemeStyle.primaryColor,
-                                ),
-                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                              ),
-                            ),
-                            obscureText: _obscurePassword,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return AppLocalizations.of(context, 'please_enter_password');
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 32),
-                          
-                          // Login Button
-                          theme.buildPrimaryButton(
-                            text: AppLocalizations.of(context, 'login'),
-                            isLoading: _isLoading,
-                            onPressed: _handleLogin,
-                          ),
-                        ],
-                      ),
+                  SizedBox(height: gapAfterLogo),
+
+                  // Welcome Text
+                  Text(
+                    AppLocalizations.of(context, 'welcome_back_header'),
+                    style: theme.headingStyle(context),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    AppLocalizations.of(context, 'glad_to_see_you_again'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: ThemeStyle.textSecondary,
+                      fontSize: isSmall ? 14 : 16,
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(height: 40),
-                    
-                    // Register Link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  ),
+
+                  SizedBox(height: gapAfterHeading),
+
+                  // Input Card
+                  Container(
+                    padding: EdgeInsets.all(cardPadding),
+                    decoration: theme.cardDecoration,
+                    child: Column(
                       children: [
-                        Text(
-                          AppLocalizations.of(context, 'dont_have_account'),
-                          style: TextStyle(color: ThemeStyle.textSecondary, fontSize: 15),
+                        // Email Field
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: theme.inputDecoration(
+                            labelText: AppLocalizations.of(context, 'email_address'),
+                            prefixIcon: Icons.alternate_email_rounded,
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return AppLocalizations.of(context, 'please_enter_email');
+                            }
+                            return null;
+                          },
                         ),
-                        TextButton(
-                          onPressed: () => Navigator.pushReplacementNamed(context, '/register'),
-                          child: Text(
-                            AppLocalizations.of(context, 'register_now'),
-                            style: TextStyle(
-                              color: ThemeStyle.primaryColor,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
+                        SizedBox(height: fieldGap),
+
+                        // Password Field
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: theme.inputDecoration(
+                            labelText: AppLocalizations.of(context, 'password'),
+                            prefixIcon: Icons.lock_outline_rounded,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
+                                color: ThemeStyle.primaryColor,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _obscurePassword = !_obscurePassword),
                             ),
                           ),
+                          obscureText: _obscurePassword,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return AppLocalizations.of(context, 'please_enter_password');
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: buttonTopGap),
+
+                        // Login Button
+                        theme.buildPrimaryButton(
+                          text: AppLocalizations.of(context, 'login'),
+                          isLoading: _isLoading,
+                          onPressed: _handleLogin,
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  SizedBox(height: isSmall ? 12 : 20),
+                ],
               ),
             ),
           ),

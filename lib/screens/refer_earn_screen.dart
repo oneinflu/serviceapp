@@ -11,9 +11,13 @@ class ReferEarnScreen extends StatelessWidget {
   const ReferEarnScreen({super.key});
 
   void _shareApp(String referralCode) {
-    final message =
-        'Check out this amazing app! Download now and get exclusive benefits. Use my referral code: $referralCode';
-    Share.share(message);
+    final encodedCode = Uri.encodeComponent('referral_code=$referralCode');
+    final storeLink =
+        'https://play.google.com/store/apps/details?id=com.jirehservice.app&referrer=$encodedCode';
+    final message = 'Join me on Serviceinfotek and get exclusive benefits!\n\n'
+        'Use my referral code 👉 $referralCode during registration to earn rewards.\n\n'
+        '📲 Download the app here:\n$storeLink';
+    Share.share(message, subject: 'Join Serviceinfotek — Use my referral code $referralCode');
   }
 
   @override
