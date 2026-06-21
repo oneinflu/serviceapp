@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
@@ -602,36 +601,6 @@ class _MyJobPostsScreenState extends State<MyJobPostsScreen> {
                                           ],
                                         );
                                       }),
-                                    const SizedBox(height: 12),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () {
-                                          final categories = job['categories'] as List? ?? [];
-                                          final catNames = categories.map((c) => c['name']).join(', ');
-                                          final loc = job['location'] ?? {};
-                                          final city = loc['city'] ?? '';
-                                          final state = loc['state'] ?? '';
-                                          final locStr = '$city, $state'.replaceAll(RegExp(r'^,\s*'), '');
-                                          
-                                          final text = 'Check out this job opportunity for $catNames in $locStr! Download the app to apply.';
-                                          Share.share(text);
-                                        },
-                                        icon: const Icon(
-                                          Icons.share,
-                                          color: Colors.white,
-                                        ),
-                                        label: Text(
-                                          AppLocalizations.of(context, 'share_job'),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        style: theme.primaryButtonStyle(
-                                          context,
-                                        ),
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
