@@ -261,11 +261,56 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
     }
   }
 
-  // Implement _removeCategory method
   void _removeCategory(Map<String, dynamic> category) {
     setState(() {
       _selectedCategories.removeWhere((cat) => cat['id'] == category['id']);
     });
+  }
+
+  Future<void> _suggestCategory(String name) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    if (token == null) return;
+
+    try {
+      final response = await Dio().post(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/categories/request',
+        data: {'name': name.trim(), 'type': 'Service'},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 201) {
+        _categoryController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Category suggestion submitted for admin approval!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit suggestion: $e')),
+      );
+    }
+  }
+
+  void _showSuggestCategoryDialog() {
+    final name = _categoryController.text.trim();
+    if (name.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Suggest New Category'),
+        content: Text('"$name" is not in our list yet.\n\nWould you like to suggest it for admin approval?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _suggestCategory(name);
+            },
+            child: const Text('Suggest'),
+          ),
+        ],
+      ),
+    );
   }
 
   // Implement _updateCategoryPrice method
@@ -699,7 +744,6 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
 
                               // Normal add functionality for users within their limits
                               if (_categoryController.text.isNotEmpty) {
-                                // Find the category based on the text
                                 final categoryName =
                                     _categoryController.text.trim();
                                 final selectedCategory = _categories.firstWhere(
@@ -712,11 +756,8 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                                       (cat) =>
                                           cat['id'] == selectedCategory['id'],
                                     )) {
-                                  // Check if user is within the maximum category limit
-                                  if (_selectedCategories.length <
-                                      maxCategories) {
+                                  if (_selectedCategories.length < maxCategories) {
                                     setState(() {
-                                      // Initialize with empty price
                                       selectedCategory['price'] = 0;
                                       _selectedCategories.add(selectedCategory);
                                       _categoryController.clear();
@@ -730,6 +771,8 @@ class _ServicePostScreenState extends State<ServicePostScreen> {
                                       ),
                                     );
                                   }
+                                } else if (selectedCategory['id'] == null) {
+                                  _showSuggestCategoryDialog();
                                 }
                               }
                             },

@@ -1,4 +1,5 @@
 import 'package:app/screens/company_info_screen.dart';
+import 'package:app/screens/edit_profile_screen.dart';
 import 'package:app/screens/company_list_screen.dart';
 import 'package:app/screens/jobs/edit_job_post_screen.dart';
 import 'package:app/screens/services/edit_service_post_screen.dart';
@@ -117,6 +118,7 @@ class MyApp extends StatelessWidget {
             '/my-subscriptions': (context) => const MySubscriptionsScreen(),
             '/payment-history': (context) => const PaymentHistoryScreen(),
             '/profile': (context) => const JobProfileScreen(),
+            '/edit-profile': (context) => const EditProfileScreen(),
           },
         );
       },

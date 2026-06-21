@@ -35,18 +35,26 @@ class AppDrawer extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 35,
-                        backgroundColor: Colors.white,
-                        child: Text(
-                          (userData?['name'] as String?)?.isNotEmpty == true
-                              ? userData!['name'][0].toUpperCase()
-                              : 'U',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: ThemeStyle.primaryColor,
-                          ),
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/edit-profile'),
+                        child: CircleAvatar(
+                          radius: 35,
+                          backgroundColor: Colors.white,
+                          backgroundImage: (userData?['profilePicUrl'] as String?)?.isNotEmpty == true
+                              ? NetworkImage(userData!['profilePicUrl'] as String)
+                              : null,
+                          child: (userData?['profilePicUrl'] as String?)?.isNotEmpty != true
+                              ? Text(
+                                  (userData?['name'] as String?)?.isNotEmpty == true
+                                      ? userData!['name'][0].toUpperCase()
+                                      : 'U',
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w900,
+                                    color: ThemeStyle.primaryColor,
+                                  ),
+                                )
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -108,6 +116,13 @@ class AppDrawer extends StatelessWidget {
                       icon: Icons.home_rounded,
                       title: AppLocalizations.of(context, 'home'),
                       onTap: () => Navigator.pushReplacementNamed(context, '/home'),
+                    ),
+                    _buildListTile(
+                      context: context,
+                      icon: Icons.person_rounded,
+                      title: 'Edit Profile',
+                      enabled: isLoggedIn,
+                      onTap: isLoggedIn ? () => Navigator.pushNamed(context, '/edit-profile') : null,
                     ),
                     _buildListTile(
                       context: context,

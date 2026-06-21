@@ -113,6 +113,52 @@ class _JobPostScreenState extends State<JobPostScreen> {
     });
   }
 
+  Future<void> _suggestCategory(String name) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    if (token == null) return;
+
+    try {
+      final response = await Dio().post(
+        'https://servicebackendnew-e2d8v.ondigitalocean.app/api/categories/request',
+        data: {'name': name.trim(), 'type': 'Job'},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 201) {
+        _categoryController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Category suggestion submitted for admin approval!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit suggestion: $e')),
+      );
+    }
+  }
+
+  void _showSuggestCategoryDialog() {
+    final name = _categoryController.text.trim();
+    if (name.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Suggest New Category'),
+        content: Text('"$name" is not in our list yet.\n\nWould you like to suggest it for admin approval?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _suggestCategory(name);
+            },
+            child: const Text('Suggest'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSubscriptionSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -369,10 +415,9 @@ class _JobPostScreenState extends State<JobPostScreen> {
                           ElevatedButton(
                             onPressed:
                                 _selectedCategories.length >= maxCategories
-                                    ? null // Disable button when max categories reached
+                                    ? null
                                     : () {
                                       if (_categoryController.text.isNotEmpty) {
-                                        // Find the category based on the text
                                         final categoryName =
                                             _categoryController.text.trim();
                                         final selectedCategory = _categories
@@ -393,11 +438,11 @@ class _JobPostScreenState extends State<JobPostScreen> {
                                                   selectedCategory['id'],
                                             )) {
                                           setState(() {
-                                            _selectedCategories.add(
-                                              selectedCategory,
-                                            );
+                                            _selectedCategories.add(selectedCategory);
                                             _categoryController.clear();
                                           });
+                                        } else if (selectedCategory['id'] == null) {
+                                          _showSuggestCategoryDialog();
                                         }
                                       }
                                     },
