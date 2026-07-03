@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../l10n/app_localizations.dart';
@@ -24,6 +25,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillReferralCode();
+  }
+
+  Future<void> _prefillReferralCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final code = prefs.getString('pending_referral_code');
+    if (code != null && code.isNotEmpty && mounted) {
+      setState(() => _referralCodeController.text = code);
+    }
+  }
 
   @override
   void dispose() {
@@ -61,6 +76,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final responseData = response.data;
 
         if (responseData['status'] == "success" && mounted) {
+          (await SharedPreferences.getInstance())
+              .remove('pending_referral_code');
+
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

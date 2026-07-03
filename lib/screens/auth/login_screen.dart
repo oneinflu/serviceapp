@@ -57,39 +57,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Register link at the top — always visible
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context, 'dont_have_account'),
-                        style: TextStyle(
-                          color: ThemeStyle.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.pushReplacementNamed(context, '/register'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          AppLocalizations.of(context, 'register_now'),
-                          style: TextStyle(
-                            color: ThemeStyle.primaryColor,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: isSmall ? 8 : 16),
-
                   // Brand Logo — centered
                   Center(
                     child: Container(
@@ -202,6 +169,37 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   SizedBox(height: isSmall ? 12 : 20),
+
+                  // Register link — below the login card
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context, 'dont_have_account'),
+                        style: TextStyle(
+                          color: ThemeStyle.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pushReplacementNamed(context, '/register'),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context, 'register_now'),
+                          style: TextStyle(
+                            color: ThemeStyle.primaryColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

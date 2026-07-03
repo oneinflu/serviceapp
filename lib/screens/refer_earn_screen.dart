@@ -10,14 +10,20 @@ import '../l10n/app_localizations.dart';
 class ReferEarnScreen extends StatelessWidget {
   const ReferEarnScreen({super.key});
 
-  void _shareApp(String referralCode) {
+  void _shareApp(BuildContext context, String referralCode) {
     final encodedCode = Uri.encodeComponent('referral_code=$referralCode');
     final storeLink =
         'https://play.google.com/store/apps/details?id=com.jirehservice.app&referrer=$encodedCode';
     final message = 'Join me on Serviceinfotek and get exclusive benefits!\n\n'
         'Use my referral code 👉 $referralCode during registration to earn rewards.\n\n'
         '📲 Download the app here:\n$storeLink';
-    Share.share(message, subject: 'Join Serviceinfotek — Use my referral code $referralCode');
+    final box = context.findRenderObject() as RenderBox?;
+    Share.share(
+      message,
+      subject: 'Join Serviceinfotek — Use my referral code $referralCode',
+      sharePositionOrigin:
+          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+    );
   }
 
   @override
@@ -99,7 +105,7 @@ class ReferEarnScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: () => _shareApp(referralCode),
+                  onPressed: () => _shareApp(context, referralCode),
                   icon: const Icon(Icons.share),
                   label: Text(AppLocalizations.of(context, 'share_with_friends'), style: theme.buttonTextStyle),
                   style: theme.primaryButtonStyle(context),

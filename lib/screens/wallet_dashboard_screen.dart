@@ -527,7 +527,12 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> with Sing
                 ElevatedButton.icon(
                   onPressed: () {
                     final message = 'Check out this amazing app! Download now and get exclusive benefits. Use my referral code: $referralCode';
-                    Share.share(message);
+                    final box = context.findRenderObject() as RenderBox?;
+                    Share.share(
+                      message,
+                      sharePositionOrigin:
+                          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+                    );
                   },
                   icon: const Icon(Icons.share, size: 18, color: Colors.white),
                   label: const Text(
@@ -705,7 +710,12 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> with Sing
                 ElevatedButton.icon(
                   onPressed: () {
                     final message = 'Check out this amazing app! Download now and get exclusive benefits. Use my referral code: $referralCode';
-                    Share.share(message);
+                    final box = context.findRenderObject() as RenderBox?;
+                    Share.share(
+                      message,
+                      sharePositionOrigin:
+                          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+                    );
                   },
                   icon: const Icon(Icons.share, size: 18, color: Colors.white),
                   label: const Text(

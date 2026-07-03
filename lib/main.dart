@@ -3,10 +3,13 @@ import 'package:app/screens/edit_profile_screen.dart';
 import 'package:app/screens/company_list_screen.dart';
 import 'package:app/screens/jobs/edit_job_post_screen.dart';
 import 'package:app/screens/services/edit_service_post_screen.dart';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:app/theme/app_theme.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:play_install_referrer/play_install_referrer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,11 +34,36 @@ import 'screens/splash_screen.dart';
 import 'screens/subscription/my_subscriptions_screen.dart';
 import 'screens/subscription/payment_history_screen.dart';
 
+/// Reads the Google Play Install Referrer once per install and, if it
+/// carries a `referral_code`, stashes it so the register screen can
+/// pre-fill the referral field.
+Future<void> _capturePendingReferralCode(SharedPreferences prefs) async {
+  if (!Platform.isAndroid) return;
+  if (prefs.getBool('referral_checked') == true) return;
+
+  try {
+    final details = await PlayInstallReferrer.installReferrer;
+    final referrer = details.installReferrer;
+    if (referrer != null && referrer.isNotEmpty) {
+      final code = Uri.splitQueryString(referrer)['referral_code'];
+      if (code != null && code.isNotEmpty) {
+        await prefs.setString('pending_referral_code', code);
+      }
+    }
+  } catch (_) {
+    // Play services unavailable or no referrer recorded; nothing to do.
+  }
+
+  await prefs.setBool('referral_checked', true);
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();
   final savedLocale = prefs.getString('language_code') ?? 'en';
+
+  await _capturePendingReferralCode(prefs);
 
   // Initialize auth provider and wait for auto login
   final authProvider = AuthProvider();
