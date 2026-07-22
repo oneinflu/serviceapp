@@ -65,6 +65,12 @@ class HomeScreen extends StatelessWidget {
       return;
     }
 
+    // Service search is free, same as job posting
+    if (serviceType == 'service-search') {
+      Navigator.pushNamed(context, '/service-search');
+      return;
+    }
+
     try {
       final response = await dio.request(
         'https://servicebackendnew-e2d8v.ondigitalocean.app/api/subscriptions/my-subscriptions',
@@ -99,8 +105,8 @@ class HomeScreen extends StatelessWidget {
         return;
       }
 
-      // Handle Service Search and Job Search
-      if ((serviceType == 'service-search' || serviceType == 'job-search') &&
+      // Handle Job Search
+      if (serviceType == 'job-search' &&
           (hasServicePostSubscription || hasCurrentServiceSubscription)) {
         Navigator.pushNamed(
           context,
@@ -116,19 +122,6 @@ class HomeScreen extends StatelessWidget {
 
     // Show subscription sheet for users without required subscription
     switch (serviceType) {
-      case 'service-search':
-        _showSubscriptionSheet(
-          context,
-          serviceType: serviceType,
-          price: 100,
-          benefits: [
-            'Unlimited service search for 365 days',
-            'Direct booking with service providers',
-            'Verified service providers only',
-          ],
-          isPremium: true,
-        );
-        break;
       case 'job-search':
         _showSubscriptionSheet(
           context,

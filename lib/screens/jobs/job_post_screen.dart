@@ -113,7 +113,15 @@ class _JobPostScreenState extends State<JobPostScreen> {
     });
   }
 
-  Future<void> _suggestCategory(String name) async {
+  Future<void> _createAndAddCategory(String name) async {
+    const int maxCategories = 10;
+    if (_selectedCategories.length >= maxCategories) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context, 'max_categories_allowed'))),
+      );
+      return;
+    }
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
     if (token == null) return;
@@ -125,38 +133,21 @@ class _JobPostScreenState extends State<JobPostScreen> {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       if (response.statusCode == 201) {
-        _categoryController.clear();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Category suggestion submitted for admin approval!')),
+        final newCategory = Map<String, dynamic>.from(
+          response.data['data']['category'],
         );
+        newCategory['id'] = newCategory['_id'];
+        setState(() {
+          _categories.add(newCategory);
+          _selectedCategories.add(newCategory);
+          _categoryController.clear();
+        });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit suggestion: $e')),
+        SnackBar(content: Text('Failed to add category: $e')),
       );
     }
-  }
-
-  void _showSuggestCategoryDialog() {
-    final name = _categoryController.text.trim();
-    if (name.isEmpty) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Suggest New Category'),
-        content: Text('"$name" is not in our list yet.\n\nWould you like to suggest it for admin approval?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _suggestCategory(name);
-            },
-            child: const Text('Suggest'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showSubscriptionSheet(BuildContext context) {
@@ -442,7 +433,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
                                             _categoryController.clear();
                                           });
                                         } else if (selectedCategory['id'] == null) {
-                                          _showSuggestCategoryDialog();
+                                          _createAndAddCategory(categoryName);
                                         }
                                       }
                                     },

@@ -118,6 +118,23 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
     }
   }
 
+  /// A 401 means the stored session is invalid/expired — log out and send
+  /// the user back to login instead of showing the raw exception text.
+  Future<void> _handleFetchError(Object e) async {
+    if (e is DioException && e.response?.statusCode == 401) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.logout();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      error = e.toString();
+      isLoading = false;
+    });
+  }
+
   Future<void> fetchServices() async {
     try {
       setState(() {
@@ -156,10 +173,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
         });
       }
     } catch (e) {
-      setState(() {
-        error = e.toString();
-        isLoading = false;
-      });
+      await _handleFetchError(e);
     }
   }
 
@@ -202,10 +216,7 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
         });
       }
     } catch (e) {
-      setState(() {
-        error = e.toString();
-        isLoading = false;
-      });
+      await _handleFetchError(e);
     }
   }
 
@@ -564,24 +575,27 @@ class _ServiceSearchScreenState extends State<ServiceSearchScreen> {
                       )
                       : error != null
                       ? Center(
-                        child: theme.buildCard(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                size: 48,
-                                color: Colors.red,
-                              ),
-                              const SizedBox(height: 16),
-                              Text('${AppLocalizations.of(context, 'error_prefix')} $error', style: theme.titleStyle),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: fetchServices,
-                                style: theme.primaryButtonStyle(context),
-                                child: Text(AppLocalizations.of(context, 'retry')),
-                              ),
-                            ],
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: theme.buildCard(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  size: 48,
+                                  color: Colors.red,
+                                ),
+                                const SizedBox(height: 16),
+                                Text('${AppLocalizations.of(context, 'error_prefix')} $error', style: theme.titleStyle),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: fetchServices,
+                                  style: theme.primaryButtonStyle(context),
+                                  child: Text(AppLocalizations.of(context, 'retry')),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       )

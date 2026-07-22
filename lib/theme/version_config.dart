@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class VersionCheckResult {
   final bool hasUpdate;
@@ -15,9 +16,6 @@ class VersionCheckResult {
 }
 
 class VersionConfig {
-  /// Local version of the app. Should match the version in pubspec.yaml.
-  static const String currentVersion = '1.0.4';
-
   /// Endpoint URL to query the latest version info.
   static const String versionCheckUrl = 'https://servicebackendnew-e2d8v.ondigitalocean.app/api/app-version';
 
@@ -26,6 +24,9 @@ class VersionConfig {
 
   /// Performs the network call and checks if the app needs to be updated.
   static Future<VersionCheckResult> checkAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    final currentVersion = packageInfo.version;
+
     final dio = Dio();
     try {
       final response = await dio.get(

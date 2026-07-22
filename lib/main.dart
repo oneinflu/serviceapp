@@ -23,6 +23,7 @@ import 'providers/locale_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/home_screen_preview.dart';
 import 'screens/jobs/job_post_screen.dart';
 import 'screens/jobs/job_profile_screen.dart';
 import 'screens/jobs/job_search_screen.dart';
@@ -114,6 +115,7 @@ class MyApp extends StatelessWidget {
           // Inside the routes map in MaterialApp:
           routes: {
             '/': (context) => const SplashScreen(),
+            '/home-preview': (context) => const HomeScreenPreview(), // Design preview only, remove once finalized
             '/login': (context) => const LoginScreen(),
             '/register': (context) => const RegisterScreen(),
             '/home': (context) => const HomeScreen(),
